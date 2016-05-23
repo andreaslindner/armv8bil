@@ -444,3 +444,119 @@ tc_exp_arm8 exp;
 
 val [t] = arm8_step_hex "b90037a1";
 b90037a1
+
+
+
+
+
+
+
+
+
+
+
+(* ******************** *)
+(* ERROR WITH eb1f001f *)
+(* problem related to the Carry flag *)
+(* ******************** *)
+val [t] = arm8_step_hex "eb1f001f";
+val s1 = ((optionSyntax.dest_some o snd o dest_comb o concl) t);
+val exp = (snd o dest_eq o concl o EVAL) ``^s1.PSTATE.C``;
+tc_exp_arm8 exp;
+
+
+val [[t]] = arm8_step_code `CMP X0, X1`;
+val [[t]] = arm8_step_code `CMP X0, XZR`;
+
+exp
+
+(if (a < x) then a else a MOD x) <> a
+
+(if (a < x) then a<>a else (a MOD x) <> a)
+
+(if (a < x) then F else T)
+
+a >= x
+
+w2n (s.REG 0w) + 18446744073709551615 + 1 >= 18446744073709551616
+
+w2n (s.REG 0w) + 18446744073709551616 >= 18446744073709551616
+
+
+
+fun appl_simp ae = (SIMP_CONV (myss) [
+      			(* These are for the C flag in addittion *)
+      			carry_thm, plus_lt_2exp64_tm,
+      			(* These are for the C flag in subtractions *)
+			minus_lt_2exp64_tm,
+      			(* These are for the V flag in addittion *)
+      			BIT63_thm, Bword_add_64_thm] ae)
+;
+
+val exp1 = (snd o dest_eq o concl) (SIMP_CONV (bool_ss) [carry_thm, minus_lt_2exp64_tm] exp); (* , w2n_of_not_zero_thm *)
+val exp1 = (snd o dest_eq o concl) (appl_simp exp);
+appl_simp exp;
+val exp1 = (snd o dest_eq o concl) (appl_simp exp1);
+
+tc_exp_arm8 exp;
+
+
+match_term ``(x:word64) + 1w`` ``(f+g) + (1w:word64)``;
+
+val pat_expr = ``~(w2n x + y + 1 < 18446744073709551616)``
+
+val mat1 = ``~(w2n (s.REG 0w) + 18446744073709551615 + 1 < 18446744073709551616)``;
+val mat2 = ``~(w2n (123w:word64) < 1)``;
+
+match_term pat_expr mat2;
+(let val _ = match_term pat_expr mat1 in "ok" end) handle _ => ("nok");
+
+
+
+	    let
+	      val matchpat = ``(x:word64) + 1w`` ``(f+g) + (1w:word64)``
+	      fun matchfun term = (let val _ = match_term matchpat term in (true) end) handle _ => (false)
+	    in
+	      if (matchfun ae) then
+	        let 
+	        (tce )
+	      else
+                let
+                  val mp = (GEN_ALL o DISCH_ALL) (MP_UN (select_bil_op_theorem ((fst o strip_comb) ae) 1) (tce o1));
+                  val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0);
+                in
+                  (be, ae, mp)
+                end
+	    end
+
+
+REWRITE_RULE [SYM t1] t2
+
+TRANS (EVAL ``1 + 1:num``) (SYM (EVAL ``0 + 2:num``))
+
+
+
+
+conv [w2n_of_not_zero_thm] [plus_lt_2exp64_tm] ae
+
+fun conv thl0 thl1 ae =
+let
+  val no_thl0 = (List.length thl0 = 0)
+  val t0 = if no_thl0 then NONE else (SOME (SIMP_CONV (bool_ss) thl0 ae))
+  val t1 = if no_thl0 then (SIMP_CONV (bool_ss) thl1 ae) else (TRANS (valOf t0) (SIMP_CONV (bool_ss) thl1 ((snd o dest_eq o concl o valOf) t0)))
+  (* val () = assert (ae = ae0) *)
+  val ae0 = (fst o dest_eq o concl) t1
+  val ae1 = (snd o dest_eq o concl) t1
+  val t2 = tce ae1
+  val mp = REWRITE_RULE [SYM t1] t2
+  val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0)
+in
+  (be, ae, mp)
+end
+
+
+val matchpat = ``~(w2n x + y + 1 < 18446744073709551616)``
+fun matchfun t = (let val v = match_term matchpat t in (SOME v) end) handle _ => (NONE)
+
+(valOf (matchfun ``~(w2n x + 1234 + 1 < 18446744073709551616)``))
+

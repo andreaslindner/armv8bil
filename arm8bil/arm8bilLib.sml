@@ -33,6 +33,9 @@ exception ArgumentException of string;
 exception UnsupportedARM8StateField of string;
 exception DebugEx of string;
 
+(* prevent >>>~ to become >>> *)
+val myss = simpLib.remove_ssfrags (srw_ss()) ["word shift"];
+
 (* ------------------------------------------------------------------------- *)
 (*  Misc tools                                                               *)
 (* ------------------------------------------------------------------------- *)
@@ -714,6 +717,11 @@ val carry_thm = prove (``!e v.
        (RW_TAC (srw_ss()) [])
 );
 
+val w2n_of_not_zero_thm = prove (``18446744073709551615 = w2n(~0w:word64)``,
+       EVAL_TAC
+);
+
+
 (* New theorems for the carry bit *)
 val plus_lt_2exp64_tm = GSYM (tryprove(
     ``∀ x y . 
@@ -1219,8 +1227,6 @@ val bool_cast_simpl_tm = prove (``!e.(case if e then Reg1 (1w :word1) else Reg1 
         | Reg64 v15 => Reg Bit64) = Reg Bit1``,
        (RW_TAC (srw_ss()) []));
 
-(* prevent >>>~ to become >>> *)
-val myss = simpLib.remove_ssfrags (srw_ss()) ["word shift"];
 
 val normalize_64_bit_zero_write_thm = prove(``
 !ha hm .
@@ -1289,7 +1295,7 @@ fun tc_exp_arm8_prefix ae prefix =
 		   else raise UnsupportedARM8ExpressionException ae
 	   val new_exp_thm = (SIMP_CONV (myss) [
       			(* These are for the C flag in addittion *)
-      			carry_thm, plus_lt_2exp64_tm,
+      			carry_thm, plus_lt_2exp64_tm, (* , Once w2n_of_not_zero_thm *)
       			(* These are for the C flag in subtractions *)
 			minus_lt_2exp64_tm,
       			(* These are for the V flag in addittion *)
@@ -1302,13 +1308,28 @@ fun tc_exp_arm8_prefix ae prefix =
 	   val t2 = MP t1_on_ae0 (SYM new_exp_thm)
 	   val mp = (GEN_ALL o DISCH_ALL) t2
 	   val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0)
-      	   in
+       in
 	      (be, ae, mp)
        end)
        handle _ =>
       let
         val (o1, o2, o3) = extract_operands ae;
 	val f0 = extract_fun ae;
+	fun match_pat matchpat t = (let val _ = match_term matchpat t in (true) end) handle _ => (false);
+	fun conv_from_thl thl0 thl1 ae =
+	  let
+	    val no_thl0 = (List.length thl0 = 0)
+	    val t0 = if no_thl0 then NONE else (SOME (SIMP_CONV (bool_ss) thl0 ae))
+  	    val t1 = if no_thl0 then (SIMP_CONV (bool_ss) thl1 ae) else (TRANS (valOf t0) (SIMP_CONV (bool_ss) thl1 ((snd o dest_eq o concl o valOf) t0)))
+  	    (* val () = assert (ae = ae0) *)
+  	    val ae0 = (fst o dest_eq o concl) t1
+  	    val ae1 = (snd o dest_eq o concl) t1
+  	    val t2 = #3 (tce ae1)
+  	    val mp = REWRITE_RULE [SYM t1] t2
+  	    val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0)
+	  in
+	    (be, ae, mp)
+	  end;
       in
               if (wordsSyntax.is_n2w ae) then (
                       bil_expr_const ae
@@ -1396,12 +1417,15 @@ fun tc_exp_arm8_prefix ae prefix =
             end
         else  if          (boolSyntax.is_neg ae)
           then
-            let
-              val mp = (GEN_ALL o DISCH_ALL) (MP_UN (select_bil_op_theorem ((fst o strip_comb) ae) 1) (tce o1));
-              val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0);
-            in
-              (be, ae, mp)
-            end
+	    if (match_pat ``~(w2n x + y + 1 < 18446744073709551616)`` ae) then
+	      conv_from_thl [w2n_of_not_zero_thm] [minus_lt_2exp64_tm] ae
+	    else
+              let
+                val mp = (GEN_ALL o DISCH_ALL) (MP_UN (select_bil_op_theorem ((fst o strip_comb) ae) 1) (tce o1));
+                val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0);
+              in
+                (be, ae, mp)
+              end
         else  if          ( numSyntax.is_plus    ae)
     (*               orelse  ( numSyntax.is_minus   ae) *)
                   orelse  ( numSyntax.is_mult    ae)
