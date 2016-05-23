@@ -1295,9 +1295,9 @@ fun tc_exp_arm8_prefix ae prefix =
 		   else raise UnsupportedARM8ExpressionException ae
 	   val new_exp_thm = (SIMP_CONV (myss) [
       			(* These are for the C flag in addittion *)
-      			carry_thm, plus_lt_2exp64_tm, (* , Once w2n_of_not_zero_thm *)
+      			carry_thm, (* plus_lt_2exp64_tm,*) (* , Once w2n_of_not_zero_thm *)
       			(* These are for the C flag in subtractions *)
-			minus_lt_2exp64_tm,
+			(* minus_lt_2exp64_tm,*)
       			(* These are for the V flag in addittion *)
       			BIT63_thm, Bword_add_64_thm] ae)
       	   val ae0 = (fst o dest_eq o concl) new_exp_thm
@@ -1419,6 +1419,8 @@ fun tc_exp_arm8_prefix ae prefix =
           then
 	    if (match_pat ``~(w2n x + y + 1 < 18446744073709551616)`` ae) then
 	      conv_from_thl [w2n_of_not_zero_thm] [minus_lt_2exp64_tm] ae
+	    else if (match_pat ``~(w2n x + w2n y < 18446744073709551616)`` ae) then
+	      conv_from_thl [] [plus_lt_2exp64_tm] ae
 	    else
               let
                 val mp = (GEN_ALL o DISCH_ALL) (MP_UN (select_bil_op_theorem ((fst o strip_comb) ae) 1) (tce o1));

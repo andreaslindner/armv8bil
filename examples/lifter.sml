@@ -462,11 +462,13 @@ b90037a1
 val [t] = arm8_step_hex "eb1f001f";
 val s1 = ((optionSyntax.dest_some o snd o dest_comb o concl) t);
 val exp = (snd o dest_eq o concl o EVAL) ``^s1.PSTATE.C``;
-tc_exp_arm8 exp;
+val abc1 = tc_exp_arm8 exp;
 
 
 val [[t]] = arm8_step_code `CMP X0, X1`;
 val [[t]] = arm8_step_code `CMP X0, XZR`;
+
+(* val [[t]] = arm8_step_code `ADDS X1, X2, X3 ` *)
 
 exp
 
@@ -560,3 +562,16 @@ fun matchfun t = (let val v = match_term matchpat t in (SOME v) end) handle _ =>
 
 (valOf (matchfun ``~(w2n x + 1234 + 1 < 18446744073709551616)``))
 
+val prefix = ""
+
+exp
+
+
+ val t0 = (SOME (SIMP_CONV (bool_ss) [w2n_of_not_zero_thm] exp))
+val t1 = (TRANS (valOf t0) (SIMP_CONV (bool_ss) [plus_lt_2exp64_tm] ((snd o dest_eq o concl o valOf) t0)))
+  (* val () = assert (ae = ae0) *)
+  val ae0 = (fst o dest_eq o concl) t1
+  val ae1 = (snd o dest_eq o concl) t1
+  val t2 = #3 (tce ae1)
+  val mp = REWRITE_RULE [SYM t1] t2
+  val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0)
