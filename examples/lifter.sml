@@ -575,3 +575,24 @@ val t1 = (TRANS (valOf t0) (SIMP_CONV (bool_ss) [plus_lt_2exp64_tm] ((snd o dest
   val t2 = #3 (tce ae1)
   val mp = REWRITE_RULE [SYM t1] t2
   val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0)
+
+
+
+
+
+
+
+ (myss)?
+
+
+(* dest_neg *) (fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) carry_thm (* ``(if e < 18446744073709551616 then e else e MOD 18446744073709551616) ≠ e`` *)
+val [[t]] = arm8_step_code `ADDS X1, X2, X3 `;
+val s1 = ((optionSyntax.dest_some o snd o dest_comb o concl) t);
+val exp = (snd o dest_eq o concl o EVAL) ``^s1.PSTATE.C``;
+val abc2 = tc_exp_arm8 exp;
+
+(* BIT *) (fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) BIT63_thm
+
+
+(* n2w *) (fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) Bword_add_64_thm
+

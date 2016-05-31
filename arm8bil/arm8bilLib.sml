@@ -1295,7 +1295,7 @@ fun tc_exp_arm8_prefix ae prefix =
 		   else raise UnsupportedARM8ExpressionException ae
 	   val new_exp_thm = (SIMP_CONV (myss) [
       			(* These are for the C flag in addittion *)
-      			carry_thm, (* plus_lt_2exp64_tm,*) (* , Once w2n_of_not_zero_thm *)
+      			(* carry_thm,*) (* plus_lt_2exp64_tm,*) (* , Once w2n_of_not_zero_thm *)
       			(* These are for the C flag in subtractions *)
 			(* minus_lt_2exp64_tm,*)
       			(* These are for the V flag in addittion *)
@@ -1417,7 +1417,9 @@ fun tc_exp_arm8_prefix ae prefix =
             end
         else  if          (boolSyntax.is_neg ae)
           then
-	    if (match_pat ``~(w2n x + y + 1 < 18446744073709551616)`` ae) then
+	    if (match_pat ``(if e < 18446744073709551616 then e else e MOD 18446744073709551616) ≠ e`` ae) then
+	      conv_from_thl [] [carry_thm] ae
+	    else if (match_pat ``~(w2n x + y + 1 < 18446744073709551616)`` ae) then
 	      conv_from_thl [w2n_of_not_zero_thm] [minus_lt_2exp64_tm] ae
 	    else if (match_pat ``~(w2n x + w2n y < 18446744073709551616)`` ae) then
 	      conv_from_thl [] [plus_lt_2exp64_tm] ae
