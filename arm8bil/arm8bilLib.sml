@@ -1290,9 +1290,10 @@ val ror32_to_std_op_thm  = blastLib.BBLAST_PROVE(`` !x y . (word_ror_bv (x:word3
 fun tc_exp_arm8_prefix ae prefix =
   let
     fun tce ae =
-      (* first apply standard simplifications *)
-      (let val _ = if (type_of ae) = ``:bool`` then true
-		   else raise UnsupportedARM8ExpressionException ae
+      (*
+       (* first apply standard simplifications *)
+       (let val _ = (* if (type_of ae) = ``:bool`` then true
+		   else *) raise UnsupportedARM8ExpressionException ae
 	   val new_exp_thm = (SIMP_CONV (myss) [
       			(* These are for the C flag in addittion *)
       			(* carry_thm,*) (* plus_lt_2exp64_tm,*) (* , Once w2n_of_not_zero_thm *)
@@ -1312,6 +1313,7 @@ fun tc_exp_arm8_prefix ae prefix =
 	      (be, ae, mp)
        end)
        handle _ =>
+      *)
       let
         val (o1, o2, o3) = extract_operands ae;
 	val f0 = extract_fun ae;
@@ -1320,7 +1322,7 @@ fun tc_exp_arm8_prefix ae prefix =
 	  let
 	    val no_thl0 = (List.length thl0 = 0)
 	    val t0 = if no_thl0 then NONE else (SOME (SIMP_CONV (bool_ss) thl0 ae))
-  	    val t1 = if no_thl0 then (SIMP_CONV (bool_ss) thl1 ae) else (TRANS (valOf t0) (SIMP_CONV (bool_ss) thl1 ((snd o dest_eq o concl o valOf) t0)))
+  	    val t1 = if no_thl0 then (SIMP_CONV (myss) thl1 ae) else (TRANS (valOf t0) (SIMP_CONV (bool_ss) thl1 ((snd o dest_eq o concl o valOf) t0)))
   	    (* val () = assert (ae = ae0) *)
   	    val ae0 = (fst o dest_eq o concl) t1
   	    val ae1 = (snd o dest_eq o concl) t1
