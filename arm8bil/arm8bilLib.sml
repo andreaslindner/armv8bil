@@ -1299,7 +1299,7 @@ fun tc_exp_arm8_prefix ae prefix =
       			(* These are for the C flag in subtractions *)
 			(* minus_lt_2exp64_tm,*)
       			(* These are for the V flag in addittion *)
-      			BIT63_thm, Bword_add_64_thm] ae)
+      			(* BIT63_thm,*) (* Bword_add_64_thm *)] ae)
       	   val ae0 = (fst o dest_eq o concl) new_exp_thm
       	   val ae1 = (snd o dest_eq o concl) new_exp_thm
 	   val t1 = MP_UN eq_trans_on_env_tm (tce ae1)
@@ -1331,7 +1331,11 @@ fun tc_exp_arm8_prefix ae prefix =
 	    (be, ae, mp)
 	  end;
       in
-              if (wordsSyntax.is_n2w ae) then (
+              if (wordsSyntax.is_n2w ae) then
+	        if (match_pat ``n2w (a + b)`` ae) then
+	          conv_from_thl [] [Bword_add_64_thm] ae
+	        else
+	          (
                       bil_expr_const ae
                     , ae
                     , GEN_ALL (SPECL [``env:environment``, eval ``w2b ^ae``] bil_const_tm)
@@ -1442,12 +1446,15 @@ fun tc_exp_arm8_prefix ae prefix =
                   orelse  ( bitSyntax.is_bit     ae)
                   orelse  (           is_eq_num  ae)
           then
-            let
-              val mp = (GEN_ALL o DISCH_ALL) (MP_NUM_BIN (select_bil_op_theorem ((fst o strip_comb) ae) 64) (tce o1) (tce o2));
-              val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0);
-            in
-              (be, ae, mp)
-            end
+	    if (match_pat ``BIT 63 n`` ae) then
+	      conv_from_thl [] [BIT63_thm, Bword_add_64_thm] ae
+	    else
+              let
+                val mp = (GEN_ALL o DISCH_ALL) (MP_NUM_BIN (select_bil_op_theorem ((fst o strip_comb) ae) 64) (tce o1) (tce o2));
+                val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0);
+              in
+                (be, ae, mp)
+              end
         else  if          (is_cond_num     ae)
           then
             let

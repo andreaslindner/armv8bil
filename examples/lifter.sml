@@ -592,7 +592,56 @@ val exp = (snd o dest_eq o concl o EVAL) ``^s1.PSTATE.C``;
 val abc2 = tc_exp_arm8 exp;
 
 (* BIT *) (fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) BIT63_thm
-
+bitSyntax.is_bit ``BIT 63 n``
+is_boolean ``BIT 32 n``
 
 (* n2w *) (fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) Bword_add_64_thm
+wordsSyntax.is_n2w ``n2w (a + b)``
+
+
+
+
+val (code, pc) = (List.nth(instructions, 1), ``8w:word64``);
+val th = tc_one_instruction2_by_bin code pc ``\x.x<+0x100000w:word64``;
+
+List.foldl (fn (code, pc) =>
+  let val _ = print "******************************\n"
+      val _ = print (String.concat ["Lifting instruction: ", code, "\n"])
+  in
+    (let val th = tc_one_instruction2_by_bin code pc ``\x.x<+0x100000w:word64``;   
+     in print_thm th ; print "\n" end
+     handle _ => print "-------FAILURE-------\n");
+     ((snd o dest_eq o concl o EVAL) ``^pc+4w``)
+  end
+) ``0w:word64`` instructions;
+
+
+
+eb1f001f
+eb1f001f
+val [t] = arm8_step_hex "eb1f001f";
+val s1 = ((optionSyntax.dest_some o snd o dest_comb o concl) t);
+val exp = (snd o dest_eq o concl o EVAL) ``^s1.PSTATE.V``;
+val abc1 = tc_exp_arm8 exp;
+
+
+val thl0 = [];
+val thl1 = [BIT63_thm,Bword_add_64_thm];
+val ae = ``BIT 63 (w2n (s.REG 0w) + 18446744073709551615 + 1)``;
+
+val no_thl0 = (List.length thl0 = 0)
+val t0 = if no_thl0 then NONE else (SOME (SIMP_CONV (myss) thl0 ae))
+val t1 = if no_thl0 then (SIMP_CONV (myss) thl1 ae) else (TRANS (valOf t0) (SIMP_CONV (myss) thl1 ((snd o dest_eq o concl o valOf) t0)))
+(* val () = assert (ae = ae0) *)
+val ae0 = (fst o dest_eq o concl) t1
+val ae1 = (snd o dest_eq o concl) t1
+val t2 = #3 (tc_exp_arm8 ae1)
+val mp = REWRITE_RULE [SYM t1] t2
+val be = List.nth ((snd o strip_comb o fst o dest_eq o concl o UNDISCH_ALL o SPEC_ALL) mp, 0)
+
+
+
+(tc_exp_arm8 ``(n2w (w2n (s.REG 0w) + 18446744073709551615 + 1) >>>~ 63w:word64)``)
+(tc_exp_arm8 ``word_lsb (0w:word64)``)
+
 
