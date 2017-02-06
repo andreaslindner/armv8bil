@@ -72,7 +72,7 @@ mlarray = mlarray[:-1]
 
 # write to output file
 f = open(outfile, 'w')
-f.write("val first_addr = %s;\n\n" % first_addr)
+f.write("val first_addr = ``0x%sw:word64``;\n\n" % first_addr)
 f.write("val instructions = [\n%s\n];\n" % mlarray)
 
 

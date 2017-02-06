@@ -1,9 +1,15 @@
 main: main.c
 	aarch64-linux-gnu-gcc main.c -o main -g3
 
-# dump with hints to C file
-# --- aarch64-linux-gnu-objdump -d -S main | less
+clean:
+	rm main dump.asm aes.sml bil.sml
 
-# example to use export script
-# aarch64-linux-gnu-objdump -d main > dump
-# ./exportfun.py dump wc_AesEncryptSimplified test.ml
+dump.asm: main
+	aarch64-linux-gnu-objdump -d main > dump.asm
+
+aes.sml: dump.asm
+	./exportfun.py dump.asm wc_AesEncryptSimplified aes.sml
+
+bil.sml: aes.sml
+	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes.sml > aescode/bil.sml
+
