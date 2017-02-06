@@ -25,7 +25,7 @@ with open(dumpfile) as f:
 #------------- https://docs.python.org/2/library/re.html
 interesting_line = False
 linecount = 0
-first_addr = 0
+first_addr = ""
 pattern_start = re.compile("^\s*(?P<addr>[0-9a-f]+) <" + funname + ">:.*$")
 pattern_stop  = re.compile("^\s*[0-9a-f]+ <.*>:.*$")
 pattern_asmbl = re.compile("^\s*(?P<addr>[0-9a-f]+):\s+(?P<instr>[0-9a-f]+)\s+.*$")
@@ -44,6 +44,7 @@ for line in content:
       linecount += 1
       if not first_addr:
         first_addr = m.group("addr")
+      last_addr = m.group("addr")
       mlarray += '"%s",' % m.group("instr")
       if linecount % 7 == 0:
         mlarray += "\n"
@@ -73,6 +74,7 @@ mlarray = mlarray[:-1]
 # write to output file
 f = open(outfile, 'w')
 f.write("val first_addr = ``0x%sw:word64``;\n\n" % first_addr)
+f.write("val last_addr = ``0x%sw:word64``;\n\n" % last_addr)
 f.write("val instructions = [\n%s\n];\n" % mlarray)
 
 

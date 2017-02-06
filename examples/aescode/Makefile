@@ -2,7 +2,7 @@ main: main.c
 	aarch64-linux-gnu-gcc main.c -o main -g3
 
 clean:
-	rm main dump.asm aes.sml bil.sml
+	rm main dump.asm aes.sml bil.sml bil_def.sml
 
 dump.asm: main
 	aarch64-linux-gnu-objdump -d main > dump.asm
@@ -12,4 +12,9 @@ aes.sml: dump.asm
 
 bil.sml: aes.sml
 	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes.sml > aescode/bil.sml
+
+bil_def.sml: aes.sml
+	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes_def.sml > aescode/bil_def.sml
+
+
 
