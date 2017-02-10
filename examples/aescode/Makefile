@@ -7,6 +7,9 @@ clean:
 dump.asm: main
 	aarch64-linux-gnu-objdump -d main > dump.asm
 
+dump.src: main
+	aarch64-linux-gnu-objdump -d -S main 
+
 aes.sml: dump.asm
 	./exportfun.py dump.asm wc_AesEncryptSimplified aes.sml
 

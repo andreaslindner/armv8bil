@@ -582,6 +582,8 @@ static void wc_AesEncryptSimplified(const word32* rk, word32 rounds, const byte*
 {
     word32 s0, s1, s2, s3;
     word32 t0, t1, t2, t3;
+    word32 v0, v1, v2, v3;
+    word32 a0, a1, a2, a3;
     word32 r = rounds - 1;
 
     /* precondition of rounds ==> rounds <= 15 /\ rounds >= 2
@@ -627,12 +629,21 @@ static void wc_AesEncryptSimplified(const word32* rk, word32 rounds, const byte*
     rk += 4;
     
     while (r != 0) {
+      a0=GETBYTE(s0, 3);
+      a1=GETBYTE(s1, 2);
+      a2=GETBYTE(s2, 1);
+      a3=GETBYTE(s3, 0);
+      v0=*(Te[0] + a0);
+      v1=*(Te[1] + a1);
+      v2=*(Te[2] + a2);
+      v3=*(Te[3] + a3);
         t0 =
-            Te[0][GETBYTE(s0, 3)]  ^
-            Te[1][GETBYTE(s1, 2)]  ^
-            Te[2][GETBYTE(s2, 1)]  ^
-            Te[3][GETBYTE(s3, 0)]  ^
+            v0  ^ v1 ^ v2 ^ v3 ^
             rk[0];
+	v0=Te[0][GETBYTE(s1, 3)];
+	v1=Te[1][GETBYTE(s2, 2)];
+	v2=Te[2][GETBYTE(s3, 1)];
+	v3=Te[3][GETBYTE(s0, 0)];
         t1 =
             Te[0][GETBYTE(s1, 3)]  ^
             Te[1][GETBYTE(s2, 2)]  ^
@@ -641,15 +652,15 @@ static void wc_AesEncryptSimplified(const word32* rk, word32 rounds, const byte*
             rk[1];
         t2 =
             Te[0][GETBYTE(s2, 3)] ^
-            Te[1][GETBYTE(s3, 2)]  ^
-            Te[2][GETBYTE(s0, 1)]  ^
-            Te[3][GETBYTE(s1, 0)]  ^
+            Te[1][GETBYTE(s3, 2)] ^
+            Te[2][GETBYTE(s0, 1)] ^
+            Te[3][GETBYTE(s1, 0)] ^
             rk[2];
         t3 =
             Te[0][GETBYTE(s3, 3)] ^
-            Te[1][GETBYTE(s0, 2)]  ^
-            Te[2][GETBYTE(s1, 1)]  ^
-            Te[3][GETBYTE(s2, 0)]  ^
+            Te[1][GETBYTE(s0, 2)] ^
+            Te[2][GETBYTE(s1, 1)] ^
+            Te[3][GETBYTE(s2, 0)] ^
             rk[3];
 
 	s0 = t0;
