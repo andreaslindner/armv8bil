@@ -640,27 +640,41 @@ static void wc_AesEncryptSimplified(const word32* rk, word32 rounds, const byte*
         t0 =
             v0  ^ v1 ^ v2 ^ v3 ^
             rk[0];
-	v0=Te[0][GETBYTE(s1, 3)];
-	v1=Te[1][GETBYTE(s2, 2)];
-	v2=Te[2][GETBYTE(s3, 1)];
-	v3=Te[3][GETBYTE(s0, 0)];
+
+      a0=GETBYTE(s1, 3);
+      a1=GETBYTE(s2, 2);
+      a2=GETBYTE(s3, 1);
+      a3=GETBYTE(s0, 0);
+      v0=*(Te[0] + a0);
+      v1=*(Te[1] + a1);
+      v2=*(Te[2] + a2);
+      v3=*(Te[3] + a3);
         t1 =
-            Te[0][GETBYTE(s1, 3)]  ^
-            Te[1][GETBYTE(s2, 2)]  ^
-            Te[2][GETBYTE(s3, 1)]  ^
-            Te[3][GETBYTE(s0, 0)]  ^
+            v0  ^ v1 ^ v2 ^ v3 ^
             rk[1];
+
+      a0=GETBYTE(s2, 3);
+      a1=GETBYTE(s3, 2);
+      a2=GETBYTE(s0, 1);
+      a3=GETBYTE(s1, 0);
+      v0=*(Te[0] + a0);
+      v1=*(Te[1] + a1);
+      v2=*(Te[2] + a2);
+      v3=*(Te[3] + a3);
         t2 =
-            Te[0][GETBYTE(s2, 3)] ^
-            Te[1][GETBYTE(s3, 2)] ^
-            Te[2][GETBYTE(s0, 1)] ^
-            Te[3][GETBYTE(s1, 0)] ^
+            v0  ^ v1 ^ v2 ^ v3 ^
             rk[2];
+
+      a0=GETBYTE(s3, 3);
+      a1=GETBYTE(s0, 2);
+      a2=GETBYTE(s1, 1);
+      a3=GETBYTE(s2, 0);
+      v0=*(Te[0] + a0);
+      v1=*(Te[1] + a1);
+      v2=*(Te[2] + a2);
+      v3=*(Te[3] + a3);
         t3 =
-            Te[0][GETBYTE(s3, 3)] ^
-            Te[1][GETBYTE(s0, 2)] ^
-            Te[2][GETBYTE(s1, 1)] ^
-            Te[3][GETBYTE(s2, 0)] ^
+            v0  ^ v1 ^ v2 ^ v3 ^
             rk[3];
 
 	s0 = t0;
@@ -677,29 +691,64 @@ static void wc_AesEncryptSimplified(const word32* rk, word32 rounds, const byte*
      * map cipher state to byte array block:
      */
 
+      a0=GETBYTE(t0, 3);
+      a1=GETBYTE(t1, 2);
+      a2=GETBYTE(t2, 1);
+      a3=GETBYTE(t3, 0);
+      v0=*(Te[2] + a0);
+      v1=*(Te[3] + a1);
+      v2=*(Te[0] + a2);
+      v3=*(Te[1] + a3);
     s0 =
-        (Te[2][GETBYTE(t0, 3)] & 0xff000000) ^
-        (Te[3][GETBYTE(t1, 2)] & 0x00ff0000) ^
-        (Te[0][GETBYTE(t2, 1)] & 0x0000ff00) ^
-        (Te[1][GETBYTE(t3, 0)] & 0x000000ff) ^
+        (v0 & 0xff000000) ^
+        (v1 & 0x00ff0000) ^
+        (v2 & 0x0000ff00) ^
+        (v3 & 0x000000ff) ^
         rk[0];
+
+      a0=GETBYTE(t1, 3);
+      a1=GETBYTE(t2, 2);
+      a2=GETBYTE(t3, 1);
+      a3=GETBYTE(t0, 0);
+      v0=*(Te[2] + a0);
+      v1=*(Te[3] + a1);
+      v2=*(Te[0] + a2);
+      v3=*(Te[1] + a3);
     s1 =
-        (Te[2][GETBYTE(t1, 3)] & 0xff000000) ^
-        (Te[3][GETBYTE(t2, 2)] & 0x00ff0000) ^
-        (Te[0][GETBYTE(t3, 1)] & 0x0000ff00) ^
-        (Te[1][GETBYTE(t0, 0)] & 0x000000ff) ^
+        (v0 & 0xff000000) ^
+        (v1 & 0x00ff0000) ^
+        (v2 & 0x0000ff00) ^
+        (v3 & 0x000000ff) ^
         rk[1];
+
+      a0=GETBYTE(t2, 3);
+      a1=GETBYTE(t3, 2);
+      a2=GETBYTE(t0, 1);
+      a3=GETBYTE(t1, 0);
+      v0=*(Te[2] + a0);
+      v1=*(Te[3] + a1);
+      v2=*(Te[0] + a2);
+      v3=*(Te[1] + a3);
     s2 =
-        (Te[2][GETBYTE(t2, 3)] & 0xff000000) ^
-        (Te[3][GETBYTE(t3, 2)] & 0x00ff0000) ^
-        (Te[0][GETBYTE(t0, 1)] & 0x0000ff00) ^
-        (Te[1][GETBYTE(t1, 0)] & 0x000000ff) ^
+        (v0 & 0xff000000) ^
+        (v1 & 0x00ff0000) ^
+        (v2 & 0x0000ff00) ^
+        (v3 & 0x000000ff) ^
         rk[2];
+
+      a0=GETBYTE(t3, 3);
+      a1=GETBYTE(t0, 2);
+      a2=GETBYTE(t1, 1);
+      a3=GETBYTE(t2, 0);
+      v0=*(Te[2] + a0);
+      v1=*(Te[3] + a1);
+      v2=*(Te[0] + a2);
+      v3=*(Te[1] + a3);
     s3 =
-        (Te[2][GETBYTE(t3, 3)] & 0xff000000) ^
-        (Te[3][GETBYTE(t0, 2)] & 0x00ff0000) ^
-        (Te[0][GETBYTE(t1, 1)] & 0x0000ff00) ^
-        (Te[1][GETBYTE(t2, 0)] & 0x000000ff) ^
+        (v0 & 0xff000000) ^
+        (v1 & 0x00ff0000) ^
+        (v2 & 0x0000ff00) ^
+        (v3 & 0x000000ff) ^
         rk[3];
 
     /* write out */
