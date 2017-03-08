@@ -1,0 +1,275 @@
+#!/usr/bin/python
+
+import sys
+import re
+
+
+# read all parameters
+if len(sys.argv) <= 3:
+  print "too few arguments, exiting."
+  print "Usage: exportfun.py dumpfile output.sml output_p.sml"
+  sys.exit()
+
+
+dumpfile   = sys.argv[1]
+outfile    = sys.argv[2]
+outfile_p  = sys.argv[3]
+
+
+# read everything from inputfile
+with open(dumpfile) as f:
+  content = f.readlines()
+
+# extract location and data
+def extract_symbol(dump, symbol):
+  print ('Start looking for symbol descriptor "%s".' % symbol)
+
+  # find (the one) matching descriptor
+  pattern_descriptor = re.compile("^\s*(?P<start>[0-9a-fA-F]+)[^\.]+(?P<section>\.[^\s]+)\s+(?P<length>0[0-9a-fA-F]+)\s+(?P<symbol>.*)$")
+  matched = False
+  start   = 0
+  length  = 0
+  for line in dump:
+    m = pattern_descriptor.match(line)
+    if m:
+      #print ("symb %s, %s, %s, %s" % (m.group("symbol"), m.group("section"), m.group("start"), m.group("length")))
+      if m.group("symbol").strip() == symbol:
+        print ('Found symbol "%s" in section "%s".' % (symbol, m.group("section")))
+        start   = int(m.group("start"), 16)
+        length  = int(m.group("length"), 16)
+        print ('"%s" starts at 0x%X, using 0x%X bytes.' % (symbol, start, length))
+        assert (start % 4) == 0
+
+        assert not matched
+        matched = True
+
+  assert matched
+  return (start, length)
+
+def extract_data(dump, (start, length)):
+  print "Start fetching data lines."
+
+  if length <= 0:
+    return ([], start, length)
+
+  # extract data in a loop (first find data start, then check consistency of addresses while extracting)
+  pattern_data = re.compile("^\s+(?P<start>[0-9a-fA-F]+)\s+(?P<dat0>[0-9a-fA-F]+)\s+(((?P<dat1_4>[0-9a-fA-F]+)\s+(?P<dat2_4>[0-9a-fA-F]+)\s+(?P<dat3_4>[0-9a-fA-F]+)\s+................)|((?P<dat1_3>[0-9a-fA-F]+)\s+(?P<dat2_3>[0-9a-fA-F]+)\s+............\s*)|((?P<dat1_2>[0-9a-fA-F]+)\s+........\s*)|(....\s*))$")
+  # last_addr is the state of parsing, first it is -1 until the right line has been found, then it is the last line's address and afterwards it is -2
+  last_addr = -1
+  data = []
+  for line in dump:
+    m = pattern_data.match(line)
+    if m:
+      cur_addr = int(m.group("start"), 16)
+      if last_addr == -1:
+        # sync
+        if cur_addr + (4 - 1) < start:
+          continue
+        last_addr = cur_addr
+      elif last_addr == -2:
+        # nothing comes again
+        assert not (start <= cur_addr and cur_addr < (start + length))
+        continue
+      else:
+        # it comes as a block and consecutively
+        assert cur_addr == (last_addr + 0x10)
+        last_addr = cur_addr
+
+      bytes_left = length - (len(data) * 4)#wrong: start + length - cur_addr
+      print ("at addr 0x%X, left 0x%X" % (last_addr, bytes_left))
+
+      # calculate how many 4byte words to skip and how many are left, in the current line
+      dats_skip = max(0, start - cur_addr) >> 2 # start - sync_addr is always a multiple of 4 here
+      dats_left = min(4, (bytes_left + (4 - 1)) >> 2)
+      dats_end  = dats_skip + dats_left
+      print (dats_skip, dats_left, dats_end)
+
+      # are we already done?
+      if dats_left <= 0:
+        last_addr = -2
+        continue
+
+      # build the dat array reflecting the current line
+      dat = []
+      if m.group("dat3_4"):
+        dat = [m.group("dat0"), m.group("dat1_4"), m.group("dat2_4"), m.group("dat3_4")]
+      elif m.group("dat2_3"):
+        dat = [m.group("dat0"), m.group("dat1_3"), m.group("dat2_3")]
+      elif m.group("dat1_2"):
+        dat = [m.group("dat0"), m.group("dat1_2")]
+      else:
+        dat = [m.group("dat0")]
+      assert dats_end <= len(dat)
+
+      # extend the right number of 4byte words
+      # using python slicing, i.e., a slice is given by a begin and end index
+      dat_extend = dat[dats_skip:dats_end]
+      data.extend(dat_extend)
+
+      # are we done?
+      #print dat_extend
+      if (len(dat_extend) * 4) >= bytes_left:
+        last_addr = -2
+
+    else:
+      # during parsing within a block, each line is a data line
+      #print last_addr
+      assert last_addr == -1 or last_addr == -2
+
+  assert last_addr == -2
+  print ("Finished fetching 0x%X lines." % length)
+
+  return (start, length, data)
+
+def extract_symboldata(dump, symbol):
+  (start, length) = extract_symbol(dump, symbol)
+  return extract_data(dump, (start, length))
+
+def extract_test():
+  print "-------------------------"
+  print "START TEST EXTRACT"
+  print
+
+  (start, length, data) = extract_symboldata(content, "wc_AesEncryptSimplified")
+  assert length == len(data) * 4
+  (start, length, data) = extract_symboldata(content, "main")
+  assert length == len(data) * 4
+  (start, length, data) = extract_symboldata(content, "__libc_csu_init")
+  assert length == len(data) * 4
+  (start, length, data) = extract_symboldata(content, "__libc_csu_fini")
+  assert length == len(data) * 4
+
+  (start, length) = extract_symbol(content, "_init")
+  (start, length, data) = extract_data(content, (start, 5*4))
+  assert length == len(data) * 4
+
+  (start, length, data) = extract_symboldata(content, "Td4")
+  assert length == len(data) * 4
+
+  #print ("0x%X, 0x%X" % (length, len(data) * 4))
+  #print data
+
+  print
+  print "END TEST EXTRACT"
+  print "-------------------------"
+
+
+
+
+# create a byte-sized mapping for the memory area (for easier exporting)
+def toByteMap(start, length, data):
+  datmap = {}
+
+  assert length % 4 == 0
+  for x in range(0, length):
+    addr = start + x
+    data_idx = x / 4
+    byte_idx = x % 4
+
+    #print ("%d, %d" % (x, length / 4))
+    #print ("%s, %d, %d" % (data[x], x, length / 4))
+    datmap[addr] = int((data[data_idx])[2*byte_idx : 2*(byte_idx+1)], 16)
+
+  #print datmap
+  return datmap
+
+
+
+
+
+# export given data as sml array (inteded for instruction lifting, so 4byte length and reverse byte order, asserts size and alginment first)
+def export_sml_arr(start, length, datmap):
+  print "Starting SML array export for instructions."
+  mlarray = "["
+
+  # make sure we are aligned and have a number of instructions, i.e., length is a multiple of 4
+  assert start % 4 == 0
+  assert length % 4 == 0
+
+  linecount = 0
+  for x in range(0, length / 4):
+    linecount += 1
+    addr = start + x * 4
+
+    #print ("%X %X %X" % (addr, x, length))
+
+    # append instruction to buffer
+    instr = "%02X%02X%02X%02X" % (datmap[addr + 3], datmap[addr + 2], datmap[addr + 1], datmap[addr + 0])
+    mlarray += '"%s",' % instr
+
+    # create a nice line length
+    if linecount % 7 == 0:
+      mlarray += "\n"
+
+  #print ("%X" % (linecount * 4))
+
+  # remove last character from mlarray string (just a trailing comma)
+  mlarray = mlarray[:-1] + "]"
+
+  print "Finished SML array export for instructions."
+  return mlarray
+
+def export_sml_arr_test():
+  print "-------------------------"
+  print "START TEST EXPORT SML ARR"
+  print
+
+  (start, length, data) = extract_symboldata(content, "wc_AesEncryptSimplified")
+  #print data
+  datmap = toByteMap(start, length, data)
+
+  mlarray = export_sml_arr(start, length, datmap)
+  #print mlarray
+
+  print
+  print "END TEST EXPORT SML ARR"
+  print "-------------------------"
+
+
+
+
+# export given data as hol function (intended for asserting memory contents bytewise)
+def export_hol(start, length, datmap):
+  print "Starting HOL export as memory function."
+  holmemf = "\\(x:word64). case x of\n    "
+
+  for x in range(0, length):
+    addr = start + x
+
+    #print ("%d, %d" % (x, length / 4))
+    #print ("%s, %d, %d" % (data[x], x, length / 4))
+    holmemf += '0x%dw => 0x%02Xw\n  | ' % (addr, datmap[addr])
+
+  holmemf += "_ => 0x0w:word8" # or should we drop this and take ARB value instead?
+
+  print "Finished HOL export as memory function."
+  return holmemf
+
+def export_hol_test():
+  print "-------------------------"
+  print "START TEST EXPORT HOL"
+  print
+
+  (start, length, data) = extract_symboldata(content, "Td4")
+  #print data
+  datmap = toByteMap(start, length, data)
+
+  holmemf = export_hol(start, length, datmap)
+  print holmemf
+
+  print
+  print "END TEST EXPORT HOL"
+  print "-------------------------"
+
+
+
+
+extract_test()
+#export_sml_arr_test()
+#export_hol_test()
+
+
+print "Done."
+
+
+
