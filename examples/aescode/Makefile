@@ -2,7 +2,7 @@ main: main.c
 	aarch64-linux-gnu-gcc main.c -o main -g3
 
 clean:
-	rm main dump.asm dump.dat aes.sml task1_p.sml bil.sml bil_def.sml
+	rm main dump.asm dump.dat aes.sml aes_p.sml bil.sml bil_def.sml
 
 dump.asm: main
 	aarch64-linux-gnu-objdump -d main > dump.asm
@@ -14,10 +14,9 @@ dump.src: main
 	aarch64-linux-gnu-objdump -d -S main 
 
 aes.sml: dump.dat
-	#./exportfun.py dump.asm wc_AesEncryptSimplified aes.sml
-	./exportfun_v2_.py dump.dat aes.sml task1_p.sml
+	./exportscript.py dump.dat aes.sml aes_p.sml
 
-task1_p.sml: aes.sml
+aes_p.sml: aes.sml
 
 bil.sml: aes.sml
 	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes.sml > aescode/bil.sml
