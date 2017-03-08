@@ -208,7 +208,7 @@ def export_sml_arr(start, length, datmap):
   #print ("%X" % (linecount * 4))
 
   # remove last character from mlarray string (just a trailing comma)
-  mlarray = mlarray[:mlarray.rfind(',') - length - 1] + "\n]"
+  mlarray = mlarray[:mlarray.rfind(',') - len(mlarray)] + "\n]"
 
   print "Finished SML array export for instructions."
   return mlarray
@@ -300,7 +300,7 @@ mlarray = export_sml_arr(start, length, datmap)
 # write to output file
 f = open(outfile, 'w')
 f.write("val first_addr   = ``0x%Xw:word64``;\n" % start)
-f.write("val last_addr    = ``0x%Xw:word64``;\n\n" % (start + length))
+f.write("val next_addr    = ``0x%Xw:word64``;\n\n" % (start + length))
 
 f.write("val instructions = %s;\n" % mlarray)
 
