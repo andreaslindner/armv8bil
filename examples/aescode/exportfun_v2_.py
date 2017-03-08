@@ -61,9 +61,10 @@ def extract_data(dump, (start, length)):
     m = pattern_data.match(line)
     if m:
       cur_addr = int(m.group("start"), 16)
+      numofwordsinthisline = 4 if m.group("dat3_4") else (3 if m.group("dat2_3") else (2 if m.group("dat1_2") else 1))
       if last_addr == -1:
         # sync
-        if cur_addr + (4 - 1) < start:
+        if cur_addr + ((numofwordsinthisline - 1) * 4) < start:
           continue
         last_addr = cur_addr
       elif last_addr == -2:
@@ -76,13 +77,13 @@ def extract_data(dump, (start, length)):
         last_addr = cur_addr
 
       bytes_left = length - (len(data) * 4)#wrong: start + length - cur_addr
-      print ("at addr 0x%X, left 0x%X" % (last_addr, bytes_left))
+      #print ("at addr 0x%X, left 0x%X" % (last_addr, bytes_left))
 
       # calculate how many 4byte words to skip and how many are left, in the current line
       dats_skip = max(0, start - cur_addr) >> 2 # start - sync_addr is always a multiple of 4 here
-      dats_left = min(4, (bytes_left + (4 - 1)) >> 2)
+      dats_left = min(4 - dats_skip, (bytes_left + (4 - 1)) >> 2)
       dats_end  = dats_skip + dats_left
-      print (dats_skip, dats_left, dats_end)
+      #print (dats_skip, dats_left, dats_end)
 
       # are we already done?
       if dats_left <= 0:
@@ -180,7 +181,10 @@ def toByteMap(start, length, data):
 # export given data as sml array (inteded for instruction lifting, so 4byte length and reverse byte order, asserts size and alginment first)
 def export_sml_arr(start, length, datmap):
   print "Starting SML array export for instructions."
-  mlarray = "["
+  mlarray = "[\n  "
+
+  if length <= 0:
+    return "[]"
 
   # make sure we are aligned and have a number of instructions, i.e., length is a multiple of 4
   assert start % 4 == 0
@@ -199,12 +203,12 @@ def export_sml_arr(start, length, datmap):
 
     # create a nice line length
     if linecount % 7 == 0:
-      mlarray += "\n"
+      mlarray += "\n  "
 
   #print ("%X" % (linecount * 4))
 
   # remove last character from mlarray string (just a trailing comma)
-  mlarray = mlarray[:-1] + "]"
+  mlarray = mlarray[:mlarray.rfind(',') - length - 1] + "\n]"
 
   print "Finished SML array export for instructions."
   return mlarray
@@ -233,12 +237,18 @@ def export_hol(start, length, datmap):
   print "Starting HOL export as memory function."
   holmemf = "\\(x:word64). case x of\n    "
 
+  linecount = 0
   for x in range(0, length):
+    linecount += 1
     addr = start + x
 
     #print ("%d, %d" % (x, length / 4))
     #print ("%s, %d, %d" % (data[x], x, length / 4))
-    holmemf += '0x%dw => 0x%02Xw\n  | ' % (addr, datmap[addr])
+    holmemf += '0x%Xw => 0x%02Xw' % (addr, datmap[addr])
+
+    if linecount % 5 == 0:
+      holmemf += "\n "
+    holmemf += " | "
 
   holmemf += "_ => 0x0w:word8" # or should we drop this and take ARB value instead?
 
@@ -255,7 +265,7 @@ def export_hol_test():
   datmap = toByteMap(start, length, data)
 
   holmemf = export_hol(start, length, datmap)
-  print holmemf
+  #print holmemf
 
   print
   print "END TEST EXPORT HOL"
@@ -264,9 +274,88 @@ def export_hol_test():
 
 
 
-extract_test()
+#extract_test()
 #export_sml_arr_test()
 #export_hol_test()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(start, length, data) = extract_symboldata(content, "wc_AesEncryptSimplified")
+datmap = toByteMap(start, length, data)
+mlarray = export_sml_arr(start, length, datmap)
+
+# write to output file
+f = open(outfile, 'w')
+f.write("val first_addr   = ``0x%Xw:word64``;\n" % start)
+f.write("val last_addr    = ``0x%Xw:word64``;\n\n" % (start + length))
+
+f.write("val instructions = %s;\n" % mlarray)
+
+
+
+
+
+
+
+
+
+def append_sym_predicate(f, symbol, predprefix):
+  (start, length, data) = extract_symboldata(content, symbol)
+  datmap = toByteMap(start, length, data)
+  holmemf = export_hol(start, length, datmap)
+
+  # write to output_p file, precondition for ARM
+  f.write("val %s        = ``\\x.((0x%Xw:word64)<=+x)/\\(x<+(0x%Xw:word64))``;\n" % (predprefix, start, start + length))
+  f.write("val %s_val    = ``%s``;\n" % (predprefix, holmemf))
+  f.write("val %s_in_mem = ``!addr. ^%s addr ==> (a.MEM addr = ^%s addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
+
+
+
+
+f = open(outfile_p, 'w')
+append_sym_predicate(f, "wc_AesEncryptSimplified", "AESC_mem")
+
+append_sym_predicate(f, "Te", "Te_mem")
+append_sym_predicate(f, "Td", "Td_mem")
+append_sym_predicate(f, "Td4", "Td4_mem")
+
+f.write("val aesc_in_mem    = ``^AESC_mem_in_mem``;\n")
+f.write("val prog_counter   = ``a.PC = ^first_addr``;\n")
+f.write("val stack_pointer  = ``a.SP_EL0 = 0x8000000FFw``;\n")
+f.write("val sbox_in_mem    = ``^Te_mem_in_mem /\\ ^Td_mem_in_mem /\\ ^Td4_mem_in_mem``;\n\n\n")
+
+f.write("val precond_arm = Define `P a = ^aesc_in_mem /\\ ^prog_counter /\\ ^stack_pointer /\\ ^sbox_in_mem`;\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 print "Done."
