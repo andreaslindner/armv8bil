@@ -320,14 +320,15 @@ def append_sym_predicate(f, symbol, predprefix):
   # write to output_p file, precondition for ARM
   f.write("val %s        = ``\\x.((0x%Xw:word64)<=+x)/\\(x<+(0x%Xw:word64))``;\n" % (predprefix, start, start + length))
   f.write("val %s_val    = ``%s``;\n" % (predprefix, holmemf))
-  f.write("val %s_in_mem = ``!addr. ^%s addr ==> (a.MEM addr = ^%s addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
+  f.write("val %s_in_mem = ``!addr. ^%s addr ==> (a.MEM addr = ^%s_val addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
 
 
 
 
 f = open(outfile_p, 'w')
-append_sym_predicate(f, "wc_AesEncryptSimplified", "AESC_mem")
+f.write("val first_addr   = ``0x%Xw:word64``;\n" % start)
 
+append_sym_predicate(f, "wc_AesEncryptSimplified", "AESC_mem")
 append_sym_predicate(f, "Te", "Te_mem")
 append_sym_predicate(f, "Td", "Td_mem")
 append_sym_predicate(f, "Td4", "Td4_mem")

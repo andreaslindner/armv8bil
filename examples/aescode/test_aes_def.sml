@@ -45,7 +45,7 @@ val (goal,certs,step,p) = tc_one_instruction_goal code pc fault_wt_mem;
 *)
 
 
-val fault_wt_mem = ``\x.((^first_addr)<=+x)/\(x<+(^last_addr))``;
+val fault_wt_mem = ``\x.((^first_addr)<=+x)/\(x<+(^next_addr))``;
 val fault_wt_mem = ``\x.x<+0x100000w:word64``;
 
 
