@@ -397,11 +397,11 @@ def append_sym_predicate(f, symbol, predprefix):
   #prepstr = "val %s_val_case = %s;\n" % (predprefix, holmemf)
   #holmemf = "\\(x:word64). ^%s_val_case" % predprefix
   # alternative 3
-  #prepstr = export_hol_3_axiom(start, length, datmap, predprefix)
-  #holmemf = "%s_memf:word64->word8" % predprefix
-  # alternative 4
-  prepstr = export_hol_4_list(start, length, datmap, predprefix)
+  prepstr = export_hol_3_axiom(start, length, datmap, predprefix)
   holmemf = "%s_memf:word64->word8" % predprefix
+  # alternative 4
+  #prepstr = export_hol_4_list(start, length, datmap, predprefix)
+  #holmemf = "%s_memf:word64->word8" % predprefix
   
 
   # write to output_p file, precondition for ARM
