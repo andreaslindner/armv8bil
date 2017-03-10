@@ -244,9 +244,9 @@ def export_hol(start, length, datmap):
 
     #print ("%d, %d" % (x, length / 4))
     #print ("%s, %d, %d" % (data[x], x, length / 4))
-    holmemf += '0x%Xw => 0x%02Xw' % (addr, datmap[addr])
+    holmemf += '0x%Xw:word64 => 0x%02Xw:word8' % (addr, datmap[addr])
 
-    if linecount % 5 == 0:
+    if linecount % 3 == 0:
       holmemf += "\n "
     holmemf += " | "
 
@@ -283,7 +283,80 @@ def export_hol_test():
 
 
 
+def export_hol_2_mk(start, length, datmap):
+  print "Starting HOL export as memory function."
+  holmemf = ""
+#TypeBase.mk_case (``x:word64``, [(``1w:word64``,``5w:word16``), (``3w:word64``,``44w:word16``),(``xx:word64``,``3w:word16``)]);
 
+  linecount = 0
+  for x in range(0, length):
+    linecount += 1
+    addr = start + x
+
+    #print ("%d, %d" % (x, length / 4))
+    #print ("%s, %d, %d" % (data[x], x, length / 4))
+    holmemf += "(``0x%Xw:word64``,``0x%02Xw:word8``), " % (addr, datmap[addr])#'0x%Xw => 0x%02Xw' % (addr, datmap[addr])
+
+    if linecount % 3 == 0:
+      holmemf += "\n  "
+
+  #holmemf += "_ => 0x0w:word8" # or should we drop this and take ARB value instead?
+  holmemf = "TypeBase.mk_case (``x:word64``, [\n  %s(``v:word64``,``0w:word8``)\n])" % holmemf
+
+  print "Finished HOL export as memory function."
+  return holmemf
+
+
+
+
+
+def export_hol_3_axiom(start, length, datmap, predprefix):
+  print "Starting HOL export as memory function."
+  holmemf = ""
+
+  #holmemf += "val %s_memf = ``%s_memf:word64 -> word8``;\n" % (predprefix, predprefix)
+  holmemf += 'val _ = new_constant("%s_memf", mk_vartype "word64 -> word8");\n' % predprefix
+  holmemf += 'val %s_memf_axiom = new_axiom("%s_memf_axiom", ``\n  ' % (predprefix, predprefix)
+
+  linecount = 0
+  for x in range(0, length):
+    linecount += 1
+    addr = start + x
+
+    #print ("%d, %d" % (x, length / 4))
+    #print ("%s, %d, %d" % (data[x], x, length / 4))
+    holmemf += "(%s_memf (0x%Xw:word64) = 0x%02Xw:word8) /\\ " % (predprefix, addr, datmap[addr])
+
+    if linecount % 2 == 0:
+      holmemf += "\n  "
+
+  holmemf += "T``);\n"
+
+  print "Finished HOL export as memory function."
+  return holmemf
+
+
+def export_hol_4_list(start, length, datmap, predprefix):
+  print "Starting HOL export as memory function."
+  hollist = "[\n  "
+
+  linecount = 0
+  for x in range(0, length):
+    linecount += 1
+    addr = start + x
+
+    hollist += "0x%02Xw; " % (datmap[addr])
+
+    if linecount % 12 == 0:
+      hollist += "\n  "
+
+  hollist = hollist[:hollist.rfind(';') - len(hollist)] + "\n] : word8 list"
+
+  holmemf = "val %s_meml_def = Define `%s_meml = %s`;\n" % (predprefix, predprefix, hollist)
+  holmemf += "val %s_memf_def = Define `(%s_memf (x:word64)):word8 = if x <+ 0x%Xw then 0w else if x >=+ 0x%Xw + 0x%Xw then 0w else EL (w2n (x - 0x%Xw)) %s_meml`;\n" % (predprefix, predprefix, start, start, length, start, predprefix)
+
+  print "Finished HOL export as memory function."
+  return holmemf
 
 
 
@@ -315,10 +388,25 @@ f.write("val instructions = %s;\n" % mlarray)
 def append_sym_predicate(f, symbol, predprefix):
   (start, length, data) = extract_symboldata(content, symbol)
   datmap = toByteMap(start, length, data)
-  holmemf = export_hol(start, length, datmap)
+
+  # alternative 1
+  #holmemf = export_hol(start, length, datmap)
+  #prepstr = ""
+  # alternative 2
+  #holmemf = export_hol_2_mk(start, length, datmap)
+  #prepstr = "val %s_val_case = %s;\n" % (predprefix, holmemf)
+  #holmemf = "\\(x:word64). ^%s_val_case" % predprefix
+  # alternative 3
+  #prepstr = export_hol_3_axiom(start, length, datmap, predprefix)
+  #holmemf = "%s_memf:word64->word8" % predprefix
+  # alternative 4
+  prepstr = export_hol_4_list(start, length, datmap, predprefix)
+  holmemf = "%s_memf:word64->word8" % predprefix
+  
 
   # write to output_p file, precondition for ARM
   f.write("val %s        = ``\\x.((0x%Xw:word64)<=+x)/\\(x<+(0x%Xw:word64))``;\n" % (predprefix, start, start + length))
+  f.write(prepstr)
   f.write("val %s_val    = ``%s``;\n" % (predprefix, holmemf))
   f.write("val %s_in_mem = ``!addr. ^%s addr ==> (a.MEM addr = ^%s_val addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
 

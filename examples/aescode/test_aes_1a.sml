@@ -20,11 +20,21 @@ HOL_Interactive.toggle_quietdec();
 
 
 
-val _ = new_constant(``f:word64 -> word8``);
+(*
+
+(*val _ = new_constant(``f:word64 -> word8``);*)
+val _ = new_constant("Ff_a", mk_vartype "word64->word8");
+
 
 val f_axiom = new_axiom("f_axiom",
-      ``   (f 0x0001w = 02w)
-        /\ (f 0x0002w = 18w)``);
+      ``   (Ff_a 0x0001w = 02w)
+        /\ (Ff_a 0x0002w = 18w) /\ T``);
+
+EVAL ``Ff_a 1w:word64``;
+SIMP_CONV (bool_ss) [f_axiom] ``Ff_a 3w:word64``;
+
+SIMP_CONV (bool_ss) [AESC_mem_memf_axiom] ``(AESC_mem_memf (0x40054Ew:word64)):word8``;
+
 
 
 
@@ -34,3 +44,4 @@ TypeBase.mk_case (``x:word64``, [(``1w:word64``,``5w:word16``), (``3w:word64``,`
 ``1w:word8 - 2w:word8``
 
 
+*)
