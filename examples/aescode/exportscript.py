@@ -161,7 +161,7 @@ def extract_test():
 def toByteMap(start, length, data):
   datmap = {}
 
-  assert length % 4 == 0
+  # this is not neccessary here: assert length % 4 == 0
   for x in range(0, length):
     addr = start + x
     data_idx = x / 4
@@ -387,6 +387,7 @@ f.write("val instructions = %s;\n" % mlarray)
 
 def append_sym_predicate(f, symbol, predprefix):
   (start, length, data) = extract_symboldata(content, symbol)
+  #length = 2 #(* this line is just for creating smaller tests for later code *)
   datmap = toByteMap(start, length, data)
 
   # alternative 1
