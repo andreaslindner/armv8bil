@@ -2,7 +2,6 @@ signature arm8bilInstructionLib =
 sig
   include Abbrev
 
-  val sim_invariant_def: thm
   val does_match : term -> term -> bool
    val align_conversion_thm : thm
 

@@ -898,19 +898,19 @@ val mem_16bit_write_tm = prove(``^goal``,
 (* ------------------------------------------------------------------------- *)
 (* MAINLY USED FOR V flag *)
 
-val BIT_exp_thm = store_thm("BIT_exp_thm",
+val BIT_exp_thm = prove(
     ``(BIT (b:num) (n:num)) = (((n DIV (2 ** b)) MOD 2) = 1)``,
     `(SUC b - b) = 1` by  RW_TAC (arith_ss) []
     THEN RW_TAC (arith_ss) [bitTheory.BIT_def, bitTheory.BITS_THM]);
 
 
-val BIT_shift_thm = Q.store_thm("BIT_shift_thm",
-  `!b n. b < dimindex(:'a) ==>
-         (BIT b n = ((n DIV w2n ((1w:'a word) << b)) MOD 2 = 1))`,
+val BIT_shift_thm = prove(
+  ``!b n. b < dimindex(:'a) ==>
+         (BIT b n = ((n DIV w2n ((1w:'a word) << b)) MOD 2 = 1))``,
   SRW_TAC [ARITH_ss] [bitTheory.BIT_def, bitTheory.BITS_THM, bitTheory.SUC_SUB, wordsTheory.word_lsl_n2w, wordsTheory.dimword_def]);
 
-val Bword_BIT_thm = Q.store_thm( "Bword_BIT_thm",
-        `!b n:num. (b < dimindex(:'a)) ==> (BIT b n = (word_lsb((n2w(n):'a word) >>> b)))`,
+val Bword_BIT_thm = prove(
+        ``!b n:num. (b < dimindex(:'a)) ==> (BIT b n = (word_lsb((n2w(n):'a word) >>> b)))``,
         RW_TAC (arith_ss++fcpLib.FCP_ss) [wordsTheory.word_lsr_def]
         THEN (blastLib.BBLAST_TAC)
         THEN (RW_TAC (arith_ss++fcpLib.FCP_ss) [wordsTheory.word_index]));
@@ -925,14 +925,14 @@ val BIT63_tmp_thm = ((SIMP_RULE (srw_ss()) [wordsTheory.dimindex_64]) o
 		 (SPECL [``63:num``]) o
 		 (Thm.INST_TYPE [alpha |-> ``:64``])) Bword_BIT_thm;
 
-val BIT63_thm = Q.store_thm( "BIT63_thm",
-        `!n:num. BIT 63 n ⇔ word_lsb (n2w n >>>~ (63w:word64))`,
+val BIT63_thm = prove(
+        ``!n:num. BIT 63 n ⇔ word_lsb (n2w n >>>~ (63w:word64))``,
         RW_TAC (srw_ss()) [BIT63_tmp_thm]);
 
 (* MAINLY USED FOR V flag in addittions *)
 
-val Bword_add_thm = Q.store_thm("Bword_add_thm",
-        `!a b:num. (n2w(a + b):'a word = n2w(a) + n2w(b))`,
+val Bword_add_thm = prove(
+        ``!a b:num. (n2w(a + b):'a word = n2w(a) + n2w(b))``,
         RW_TAC (srw_ss()) [wordsTheory.word_add_def,wordsTheory.word_add_n2w]);
 
 val Bword_add_64_thm = (Thm.INST_TYPE [alpha |-> ``:64``])Bword_add_thm;
