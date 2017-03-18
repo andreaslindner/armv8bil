@@ -387,7 +387,7 @@ f.write("val instructions = %s;\n" % mlarray)
 
 def append_sym_predicate(f, symbol, predprefix):
   (start, length, data) = extract_symboldata(content, symbol)
-  #length = 2 #(* this line is just for creating smaller tests for later code *)
+  #length = 50 #(* this line is just for creating smaller tests for later code *)
   datmap = toByteMap(start, length, data)
 
   # alternative 1
@@ -409,7 +409,7 @@ def append_sym_predicate(f, symbol, predprefix):
   f.write("val %s        = ``\\x.((0x%Xw:word64)<=+x)/\\(x<+(0x%Xw:word64))``;\n" % (predprefix, start, start + length))
   f.write(prepstr)
   f.write("val %s_val    = ``%s``;\n" % (predprefix, holmemf))
-  f.write("val %s_in_mem = ``!addr. ^%s addr ==> (a.MEM addr = ^%s_val addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
+  f.write("val %s_in_mem = ``!addr. ^%s addr ==> (s.MEM addr = ^%s_val addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
 
 
 
@@ -423,11 +423,11 @@ append_sym_predicate(f, "Td", "Td_mem")
 append_sym_predicate(f, "Td4", "Td4_mem")
 
 f.write("val aesc_in_mem    = ``^AESC_mem_in_mem``;\n")
-f.write("val prog_counter   = ``a.PC = ^first_addr``;\n")
-f.write("val stack_pointer  = ``a.SP_EL0 = 0x8000000FFw``;\n")
+f.write("val prog_counter   = ``s.PC = ^first_addr``;\n")
+f.write("val stack_pointer  = ``s.SP_EL0 = 0x8000000FFw``;\n")
 f.write("val sbox_in_mem    = ``^Te_mem_in_mem /\\ ^Td_mem_in_mem /\\ ^Td4_mem_in_mem``;\n\n\n")
 
-f.write("val precond_arm = Define `P a = ^aesc_in_mem /\\ ^prog_counter /\\ ^stack_pointer /\\ ^sbox_in_mem`;\n")
+f.write("val precond_arm = Define `P s = ^aesc_in_mem /\\ ^prog_counter /\\ ^stack_pointer /\\ ^sbox_in_mem`;\n")
 
 
 

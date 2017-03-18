@@ -1,4 +1,5 @@
-HOL_Interactive.toggle_quietdec();
+val lasttimer = start_time();
+(*HOL_Interactive.toggle_quietdec();*)
 open HolKernel boolLib bossLib Parse;
 open lcsymtacs utilsLib;
 open wordsLib blastLib;
@@ -16,7 +17,18 @@ open arm8bilInstructionLib;
 
 use "./aescode/aes_p.sml";
 
-HOL_Interactive.toggle_quietdec();
+(*HOL_Interactive.toggle_quietdec();*)
+
+
+
+
+
+print "\r\n ======== LOADED everything ========\r\n";
+end_time lasttimer;
+val lasttimer = start_time();
+
+
+
 
 (*
 (* example axiomatic *)
@@ -92,6 +104,17 @@ val thm_if = prove(``!pa v1 . (if s.MEM pa = v1 then Reg1 (1w:word1) else Reg1 0
 
 
 
+
+
+print "\r\n ======== BEFORE INDIVIDUAL LIFTING ========\r\n";
+end_time lasttimer;
+val lasttimer = start_time();
+
+
+
+
+
+
 (*val conv_val_x = List.nth(conv_val,2);*)
 val goal_thms = List.map (fn conv_val_x =>
   let
@@ -109,6 +132,17 @@ val goal_thms = List.map (fn conv_val_x =>
   ) conv_vals;
   
     (* /\ pco = (SOME <|label := Address (Reg64 ^first_addr); index := 0|>)*)
+
+
+
+
+
+
+
+print "\r\n ======== AFTER INDIVIDUAL LIFTING ========\r\n";
+end_time lasttimer;
+val lasttimer = start_time();
+
 
 
 
@@ -156,6 +190,17 @@ val tac_expand =
 
 
 
+
+print "\r\n ======== BEFORE p and S IS ENTAILED ========\r\n";
+end_time lasttimer;
+val lasttimer = start_time();
+
+
+
+
+
+
+
 (*
 val anttm = fst (List.nth(implics, 0));
 *)
@@ -173,11 +218,35 @@ val pandSentailed = List.map (fn (anttm,_) =>
   end
   ) implics;
 
+
+
+
+
+
+print "\r\n ======== BEFORE /\\pb |- Pb ========\r\n";
+end_time lasttimer;
+val lasttimer = start_time();
+
+
+
+
+
 val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
 val Pb_ent = prove(``^Pb_ent_goal``,
        (EVAL_TAC)
   THEN (FULL_SIMP_TAC (srw_ss()) [thm_if])
 );
+
+
+
+
+
+
+print "\r\n ======== AFTER /\\pb |- Pb ========\r\n";
+end_time lasttimer;
+val lasttimer = start_time();
+
+
 
 
 
