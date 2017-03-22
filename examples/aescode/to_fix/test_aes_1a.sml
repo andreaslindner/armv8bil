@@ -233,8 +233,15 @@ val lasttimer = start_time();
 
 val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
 val Pb_ent = prove(``^Pb_ent_goal``,
-       (EVAL_TAC)
-  THEN (FULL_SIMP_TAC (srw_ss()) [thm_if])
+  (RW_TAC (srw_ss()) [])
+  THEN (FULL_SIMP_TAC (srw_ss()) [Pb_def])
+  THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def])
+  THEN (FULL_SIMP_TAC (srw_ss()) [])
+  THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def])
+  THEN (FULL_SIMP_TAC (srw_ss()) [])
+  THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def])
+  THEN (FULL_SIMP_TAC (srw_ss()) [])
+  THEN (EVAL_TAC)
 );
 
 
