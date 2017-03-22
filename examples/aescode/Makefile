@@ -2,7 +2,7 @@ main: main.c
 	aarch64-linux-gnu-gcc main.c -o main -g3
 
 clean:
-	rm main dump.asm dump.dat aes.sml aes_p.sml bil.sml bil_def.sml
+	rm -f main dump.asm dump.dat aes.sml
 	/opt/hol_snapshot/bin/Holmake cleanAll
 
 dump.asm: main
@@ -15,18 +15,18 @@ dump.src: main
 	aarch64-linux-gnu-objdump -d -S main 
 
 aes.sml: dump.dat
-	./exportscript.py dump.dat aes.sml aes_p.sml
+	./exportscript.py dump.dat aes.sml to_fix/aes_p.sml
 
-aes_p.sml: aes.sml
+to_fix/bil.sml: aes.sml
+	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes.sml > aescode/to_fix/bil.sml
 
-bil.sml: aes.sml
-	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes.sml > aescode/bil.sml
+to_fix/bil_def.sml: aes.sml
+	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes_def.sml > aescode/to_fix/bil_def.sml
 
-bil_def.sml: aes.sml
-	cd ..; /opt/hol_snapshot/bin/hol < aescode/test_aes_def.sml > aescode/bil_def.sml
+hol: aesCodeScript.sml aes.sml
+	/opt/hol_snapshot/bin/Holmake
 
-aesCodeTheory.sml: aesCodeScript.sml aes.sml
-	/opt/hol_snapshot/bin/Holmake aesCodeTheory.sml
-	/opt/hol_snapshot/bin/Holmake aesCodeTheory.ui
-	/opt/hol_snapshot/bin/Holmake aesCodeTheory.uo
+aesCodeTheory.sml: hol
 
+aes.bil: aesCodeTheory.sml export_bil.sml
+	/opt/hol_snapshot/bin/hol < export_bil.sml

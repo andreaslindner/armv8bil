@@ -372,12 +372,21 @@ mlarray = export_sml_arr(start, length, datmap)
 
 # write to output file
 f = open(outfile, 'w')
+f.write("""
+structure aes :> aes =
+struct
+
+open HolKernel boolLib bossLib Parse;
+open wordsLib;
+""")
+
 f.write("val first_addr   = ``0x%Xw:word64``;\n" % start)
 f.write("val next_addr    = ``0x%Xw:word64``;\n\n" % (start + length))
 
 f.write("val instructions = %s;\n" % mlarray)
 
 
+f.write("end\n")
 
 
 
