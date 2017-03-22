@@ -53,7 +53,6 @@ val bil_blocks = List.map (fn thm =>
   (List.find (is_exists) ((fst o strip_imp o concl) thm1))
   end) thms;
 
-
 val bil_program = listSyntax.mk_list (bil_blocks, ``:bil_block_t``);
 
 
@@ -233,7 +232,8 @@ in
 end;
 
 fun print_block block =
-let val instrs = (snd o pairSyntax.dest_pair o optionSyntax.dest_some o snd o dest_eq o snd o dest_exists) block;
+let
+    val instrs = block;
     val (_, [("label", lbl),  ("statements", sts)]) = TypeBase.dest_record instrs;
     val (sts1, _) = listSyntax.dest_list sts;
     val (_, pc) = dest_comb lbl;
