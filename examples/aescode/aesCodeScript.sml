@@ -29,10 +29,9 @@ val instructions = [
 val first_addr   = ``0x400520w:word64``;
 val next_addr    = ``0x400D7Cw:word64``;
 
-use "./aescode/aes.sml";
+val instructions = [List.hd instructions];
 *)
 
-val instructions = [List.hd instructions];
 
 (* TODO: we need a proper program region function *)
 val fault_wt_mem = ``\x.x<+0x100000w:word64``;

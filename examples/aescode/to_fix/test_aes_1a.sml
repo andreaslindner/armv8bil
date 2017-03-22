@@ -15,7 +15,7 @@ open arm8stepbilLib;
 open arm8bilInstructionLib;
 
 
-use "./aescode/aes_p.sml";
+use "./to_fix/aes_p.sml";
 
 (*HOL_Interactive.toggle_quietdec();*)
 
@@ -198,7 +198,7 @@ val lasttimer = start_time();
 
 
 
-
+val list_thms = CONJUNCTS (hd memf_axioms);
 
 
 (*
