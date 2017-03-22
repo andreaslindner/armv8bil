@@ -21,12 +21,17 @@ val _ = new_theory "aesCode";
 (* the ARM code binary and locations *)
 (* ---------------------- *)
 
+(*
 val instructions = [
 "d10103ff",
 "d10103ff"
 ];
 val first_addr   = ``0x400520w:word64``;
 val next_addr    = ``0x400D7Cw:word64``;
+
+use "./aescode/aes.sml";
+*)
+use "./aes.sml";
 
 
 (* TODO: we need a proper program region function *)
@@ -247,8 +252,13 @@ in frag_str end;
 
 (* export to BAP format: then using the helper functions *)
 (* ---------------------- *)
+val bapinput_content = List.foldr (fn (x, y) => (print_block x) ^ y) "" ((fst o listSyntax.dest_list o snd o dest_eq o concl) aes_bil_program_def);
 
-List.map (print o print_block) ((fst o listSyntax.dest_list o snd o dest_eq o concl) aes_bil_program_def);
+val fd = TextIO.openOut "bapinput.txt";
+val _ = TextIO.output (fd, bapinput_content) handle e => (TextIO.closeOut fd; raise e);
+val _ = TextIO.closeOut fd;
+
+(*List.map (print o print_block) ((fst o listSyntax.dest_list o snd o dest_eq o concl) aes_bil_program_def);*)
 
 
 
