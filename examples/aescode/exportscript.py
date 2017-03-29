@@ -330,7 +330,8 @@ def export_hol_3_axiom(start, length, datmap, predprefix):
     if linecount % 2 == 0:
       holmemf += "\n  "
 
-  holmemf += "T``);\n"
+  #holmemf += "T``);\n"
+  holmemf = holmemf[:holmemf.rfind(' /\\') - len(holmemf)] + "\n``);\n"
 
   print "Finished HOL export as memory function."
   return holmemf
@@ -396,7 +397,7 @@ f.write("end\n")
 
 def append_sym_predicate(f, symbol, predprefix):
   (start, length, data) = extract_symboldata(content, symbol)
-  #length = 50 #(* this line is just for creating smaller tests for later code *)
+  #length = 100 #(* this line is just for creating smaller tests for later code *)
   datmap = toByteMap(start, length, data)
 
   # alternative 1
