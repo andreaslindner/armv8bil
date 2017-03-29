@@ -250,6 +250,134 @@ end_time lasttimer;
 val lasttimer = start_time();
 
 
+(*
+val allconjs = (List.map ((hd o snd o strip_comb o fst o dest_eq) o snd) implics);
+
+
+val termList = List.map (snd) implics;
+val termImpl = List.foldl mk_imp (concl faerdigt) termList;
+
+val termList = List.concat [List.map (snd) implics, [concl faerdigt]];
+val termImpl = List.foldl (fn (thd,trest) =>
+    mk_imp (thd, trest)
+  )
+  (last termList)
+  ((tl o List.rev) termList)
+;
+
+(UNDISCH_ALL o ASSUME) termImpl
+*)
+ 
+(*
+val testt = prove(``(x = (5w:word64)) ==> (y = (3w:word64)) ==> (x + y = 8w)``, STRIP_TAC THEN (RW_TAC bool_ss []) THEN EVAL_TAC);
+val assumAB = ASSUME ``(x = (5w:word64)) /\ (y = (3w:word64))``;
+val afterAssum = CONJUNCT1 (CONJ testt assumAB);
+
+DISCH_ALL (MP (MP afterAssum ((CONJUNCT1 o CONJUNCT2) (CONJ testt assumAB))) ((CONJUNCT2 o CONJUNCT2) (CONJ testt assumAB)))
+*)
+
+
+
+val bil_eval_and2_thm = prove(``!x y xv yv env. (bil_eval_exp x env = Int (bool2b xv)) ==> (bil_eval_exp y env = Int (bool2b yv)) ==> (bil_eval_exp (And x y) env = Int (bool2b (xv /\ yv)))``,
+  (RW_TAC (srw_ss()) [])
+  THEN (Cases_on `xv`)
+  THEN (Cases_on `yv`)
+(*  THEN (RW_TAC (srw_ss()) []) *)
+  
+  THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def])
+  THEN (FULL_SIMP_TAC (srw_ss()) [])
+  THEN (EVAL_TAC)
+);
+
+
+val allconjs = (List.map ((hd o snd o strip_comb o fst o dest_eq) o snd) implics);
+
+(*
+val thm1 = ((ASSUME o snd o last) implics);
+val bi = ((hd o snd o strip_comb o fst o dest_eq) o snd o hd o tl o List.rev) implics;
+
+val thm1 = MP (DISCH (concl thm1) thm2) thm1;
+val bi = ((hd o snd o strip_comb o fst o dest_eq) o snd o hd o tl o tl o List.rev) implics;
+*)
+val thmWeActuallyWant = List.foldr (fn (bi,thm1) =>
+    let
+      val bexp_y = ((hd o snd o strip_comb o fst o dest_eq) o concl) thm1;
+      val thm2 = SIMP_RULE bool_ss [] ((UNDISCH o UNDISCH) (SPECL [bi, bexp_y, ``T``, ``T``, ``env:environment``] bil_eval_and2_thm));
+    in
+      MP (DISCH (concl thm1) thm2) thm1
+    end
+  )
+  ((ASSUME o snd o last) implics)
+  ((List.rev o tl o List.rev) allconjs);
+
+val thmImpChain = DISCH_ALL thmWeActuallyWant;
+
+(*
+val termList = List.concat [List.map (snd) implics, [concl thmWeActuallyWant]];
+val termImpl = List.foldl (fn (thd,trest) =>
+    mk_imp (thd, trest)
+  )
+  (last termList)
+  ((tl o List.rev) termList)
+;
+*)
+
+val assumAB = (ASSUME o list_mk_conj) (List.map (snd) implics);
+val conjAssum = CONJ thmImpChain assumAB;
+val afterAssum = CONJUNCT1 conjAssum;
+fun conjunctAt x last =
+  let
+    val conj2chain = if x = 0 then (fn x => x) else (List.foldr (fn (x,y) => y o x) (CONJUNCT2) (List.tabulate (x-1, fn _ => CONJUNCT2)));
+  in
+    if x = last then
+      conj2chain
+    else
+      CONJUNCT1 o conj2chain
+  end
+;
+val thmAlmost = List.foldl (fn (cNext,x) =>
+    MP x cNext
+  )
+  afterAssum
+  (List.tabulate (length implics, fn x => conjunctAt x ((length implics) - 1) assumAB))
+;
+
+
+val Pb_ent = ((GEN ``env:environment``) o (REWRITE_RULE [(SYM o (SPEC ``env:environment``)) Pb_def]) o DISCH_ALL) thmAlmost;
+(*
+val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
+val Pb_ent_check = prove(``^Pb_ent_goal``, ACCEPT_TAC Pb_ent);
+*)
+
+(*
+val testt = prove(``(x = (5w:word64)) ==> (y = (3w:word64)) ==> (x + y = 8w)``, STRIP_TAC THEN (RW_TAC bool_ss []) THEN EVAL_TAC);
+val assumAB = ASSUME ``(x = (5w:word64)) /\ (y = (3w:word64))``;
+val conjAssum = CONJ testt assumAB;
+val afterAssum = CONJUNCT1 conjAssum;
+
+DISCH_ALL (MP (MP afterAssum ((CONJUNCT1 o CONJUNCT2) conjAssum)) ((CONJUNCT2 o CONJUNCT2) conjAssum))
+*)
+
+
+
+(*
+val arg1 = (hd allconjs);
+val arg2 = (hd (tl allconjs));
+
+val thm1 = SIMP_RULE bool_ss [] (UNDISCH (SPECL [arg1, arg2, ``T``, ``T``, ``env:environment``] bil_eval_and2_thm));
+
+val storkonj = list_mk_conj (List.map snd implics);
+*)
+
+
+(*
+val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
+*)
+
+
+(*
+(* --------------------------------------------------------------- *)
+
 
 val bil_eval_and2_thm = prove(``!x y xv yv env. (bil_eval_exp x env = Int (bool2b xv)) ==> (bil_eval_exp y env = Int (bool2b yv)) ==> (bil_eval_exp (And x y) env = Int (bool2b (xv /\ yv)))``,
   (RW_TAC (srw_ss()) [])
@@ -371,8 +499,8 @@ POP_ASSUM_LIST
 
 *)
 
-
-
+(* --------------------------------------------------------------- *)
+*)
 
 print "\r\n ======== AFTER /\\pb |- Pb ========\r\n";
 end_time lasttimer;
