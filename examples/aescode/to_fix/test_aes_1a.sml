@@ -289,6 +289,8 @@ val bil_eval_and2_thm = prove(``!x y xv yv env. (bil_eval_exp x env = Int (bool2
   THEN (EVAL_TAC)
 );
 
+val bil_eval_and_spec_thm = ((GENL [``x:bil_exp_t``, ``y:bil_exp_t``]) o (SIMP_RULE bool_ss []) o (SPECL [``x:bil_exp_t``, ``y:bil_exp_t``, ``T``, ``T``, ``env:environment``])) bil_eval_and2_thm;
+
 
 val allconjs = (List.map ((hd o snd o strip_comb o fst o dest_eq) o snd) implics);
 
@@ -302,7 +304,7 @@ val bi = ((hd o snd o strip_comb o fst o dest_eq) o snd o hd o tl o tl o List.re
 val thmWeActuallyWant = List.foldr (fn (bi,thm1) =>
     let
       val bexp_y = ((hd o snd o strip_comb o fst o dest_eq) o concl) thm1;
-      val thm2 = SIMP_RULE bool_ss [] ((UNDISCH o UNDISCH) (SPECL [bi, bexp_y, ``T``, ``T``, ``env:environment``] bil_eval_and2_thm));
+      val thm2 = (UNDISCH o UNDISCH o (SPECL [bi, bexp_y])) bil_eval_and_spec_thm;
     in
       MP (DISCH (concl thm1) thm2) thm1
     end
