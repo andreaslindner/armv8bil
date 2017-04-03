@@ -310,7 +310,7 @@ val thmWeActuallyWant = List.foldr (fn (bi,thm1) =>
   ((ASSUME o snd o last) implics)
   ((List.rev o tl o List.rev) allconjs);
 
-val thmImpChain = DISCH_ALL thmWeActuallyWant;
+val thmImpChain = List.foldr (fn (x,y) => DISCH x y) thmWeActuallyWant (List.map (snd) implics); (* DISCH_ALL *)
 
 (*
 val termList = List.concat [List.map (snd) implics, [concl thmWeActuallyWant]];
@@ -342,6 +342,9 @@ val thmAlmost = List.foldl (fn (cNext,x) =>
   (List.tabulate (length implics, fn x => conjunctAt x ((length implics) - 1) assumAB))
 ;
 
+(*
+List.map concl (List.tabulate (length implics, fn x => conjunctAt x ((length implics) - 1) assumAB))
+*)
 
 val Pb_ent = ((GEN ``env:environment``) o (REWRITE_RULE [(SYM o (SPEC ``env:environment``)) Pb_def]) o DISCH_ALL) thmAlmost;
 (*
