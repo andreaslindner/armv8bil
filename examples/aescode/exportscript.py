@@ -397,7 +397,7 @@ f.write("end\n")
 
 def append_sym_predicate(f, symbol, predprefix):
   (start, length, data) = extract_symboldata(content, symbol)
-  #length = 100 #(* this line is just for creating smaller tests for later code *)
+  length = 10 #(* this line is just for creating smaller tests for later code *)
   datmap = toByteMap(start, length, data)
 
   # alternative 1
@@ -425,6 +425,14 @@ def append_sym_predicate(f, symbol, predprefix):
 
 
 f = open(outfile_p, 'w')
+f.write("""
+structure aes_p :> aes_p =
+struct
+
+open HolKernel boolLib bossLib Parse;
+open wordsLib;
+""")
+
 f.write("val first_addr   = ``0x%Xw:word64``;\n" % start)
 
 append_sym_predicate(f, "wc_AesEncryptSimplified", "AESC_mem")
@@ -438,6 +446,9 @@ f.write("val stack_pointer  = ``s.SP_EL0 = 0x8000000FFw``;\n")
 f.write("val sbox_in_mem    = ``^Te_mem_in_mem /\\ ^Td_mem_in_mem /\\ ^Td4_mem_in_mem``;\n\n\n")
 
 f.write("val precond_arm = Define `P s = ^aesc_in_mem /\\ ^prog_counter /\\ ^stack_pointer /\\ ^sbox_in_mem`;\n")
+
+
+f.write("end\n")
 
 
 

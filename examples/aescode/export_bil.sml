@@ -187,7 +187,8 @@ in frag_str end;
 
 (* export to BAP format: then using the helper functions *)
 (* ---------------------- *)
-val bapinput_content = List.foldr (fn (x, y) => (print_block x) ^ y) "" ((fst o listSyntax.dest_list o snd o dest_eq o concl) aesCodeTheory.aes_bil_program_def);
+val bilprog = (fst o listSyntax.dest_list o snd o dest_eq o concl) aesCodeTheory.aes_bil_program_def;
+val bapinput_content = List.foldr (fn (x, y) => (print_block x) ^ y) "" (List.concat [[], bilprog, []]);
 
 val fd = TextIO.openOut "aes.bil";
 val _ = TextIO.output (fd, bapinput_content) handle e => (TextIO.closeOut fd; raise e);
