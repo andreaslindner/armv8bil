@@ -387,7 +387,7 @@ f.write("val next_addr    = ``0x%Xw:word64``;\n\n" % (start + length))
 f.write("val instructions = %s;\n" % mlarray)
 
 
-f.write("end\n")
+f.write("\nend\n")
 
 
 
@@ -395,7 +395,7 @@ f.write("end\n")
 
 
 
-def append_sym_predicate(f, symbol, predprefix):
+def append_sym_predicate(symbol, predprefix):
   (start, length, data) = extract_symboldata(content, symbol)
   length = 10 #(* this line is just for creating smaller tests for later code *)
   datmap = toByteMap(start, length, data)
@@ -414,17 +414,38 @@ def append_sym_predicate(f, symbol, predprefix):
   #prepstr = export_hol_4_list(start, length, datmap, predprefix)
   #holmemf = "%s_memf:word64->word8" % predprefix
   
+  output_content = ""
+  output_content += ("val %s        = ``\\x.((0x%Xw:word64)<=+x)/\\(x<+(0x%Xw:word64))``;\n" % (predprefix, start, start + length))
+  output_content += (prepstr)
+  output_content += ("val %s_val    = ``%s``;\n" % (predprefix, holmemf))
+  output_content += ("val %s_in_mem = ``!addr. ^%s addr ==> (s.MEM addr = ^%s_val addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
 
   # write to output_p file, precondition for ARM
-  f.write("val %s        = ``\\x.((0x%Xw:word64)<=+x)/\\(x<+(0x%Xw:word64))``;\n" % (predprefix, start, start + length))
-  f.write(prepstr)
-  f.write("val %s_val    = ``%s``;\n" % (predprefix, holmemf))
-  f.write("val %s_in_mem = ``!addr. ^%s addr ==> (s.MEM addr = ^%s_val addr)``;\n\n\n" % (predprefix, predprefix, predprefix))
+  #f.write output_content
+
+  return output_content
+
 
 
 
 
 f = open(outfile_p, 'w')
+
+outfile_p_content = ""
+outfile_p_content += ("val first_addr   = ``0x%Xw:word64``;\n" % start)
+
+outfile_p_content += append_sym_predicate("wc_AesEncryptSimplified", "AESC_mem")
+outfile_p_content += append_sym_predicate("Te", "Te_mem")
+outfile_p_content += append_sym_predicate("Td", "Td_mem")
+outfile_p_content += append_sym_predicate("Td4", "Td4_mem")
+
+outfile_p_content += ("val aesc_in_mem    = ``^AESC_mem_in_mem``;\n")
+outfile_p_content += ("val prog_counter   = ``s.PC = ^first_addr``;\n")
+outfile_p_content += ("val stack_pointer  = ``s.SP_EL0 = 0x8000000FFw``;\n")
+outfile_p_content += ("val sbox_in_mem    = ``^Te_mem_in_mem /\\ ^Td_mem_in_mem /\\ ^Td4_mem_in_mem``;\n\n\n")
+
+outfile_p_content += ("val precond_arm = Define `P s = ^aesc_in_mem /\\ ^prog_counter /\\ ^stack_pointer /\\ ^sbox_in_mem`;\n")
+
 f.write("""
 structure aes_p :> aes_p =
 struct
@@ -433,27 +454,16 @@ open HolKernel boolLib bossLib Parse;
 open wordsLib;
 """)
 
-f.write("val first_addr   = ``0x%Xw:word64``;\n" % start)
+f.write(outfile_p_content)
 
-append_sym_predicate(f, "wc_AesEncryptSimplified", "AESC_mem")
-append_sym_predicate(f, "Te", "Te_mem")
-append_sym_predicate(f, "Td", "Td_mem")
-append_sym_predicate(f, "Td4", "Td4_mem")
-
-f.write("val aesc_in_mem    = ``^AESC_mem_in_mem``;\n")
-f.write("val prog_counter   = ``s.PC = ^first_addr``;\n")
-f.write("val stack_pointer  = ``s.SP_EL0 = 0x8000000FFw``;\n")
-f.write("val sbox_in_mem    = ``^Te_mem_in_mem /\\ ^Td_mem_in_mem /\\ ^Td4_mem_in_mem``;\n\n\n")
-
-f.write("val precond_arm = Define `P s = ^aesc_in_mem /\\ ^prog_counter /\\ ^stack_pointer /\\ ^sbox_in_mem`;\n")
+f.write("\nend\n")
 
 
-f.write("end\n")
+with open("aesProp1CondScript.template") as f:
+  prop1CondScriptTemplate = f.read()
 
-
-
-
-
+f = open("aesProp1CondScript.sml", 'w')
+f.write (prop1CondScriptTemplate.replace("(* ====== EXPORTED AES CONDITION DEFINITIONS ARE INJECTED HERE ====== *)", outfile_p_content))
 
 
 

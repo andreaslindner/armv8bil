@@ -4,7 +4,6 @@ open lcsymtacs utilsLib;
 open wordsLib blastLib;
 open state_transformerTheory updateTheory arm8Theory;
 open stateTheory;
-open aes_p;
 open lcsymtacs arm8_stepTheory;
 open state_transformerSyntax;
 open arm8_stepLib;
@@ -17,78 +16,12 @@ open arm8bilInstructionLib;
 
 val _ = new_theory "aesProp1Cond";
 
-val first_addr   = ``0x400520w:word64``;
-val AESC_mem        = ``\x.((0x400520w:word64)<=+x)/\(x<+(0x40052Aw:word64))``;
-val AESC_mem_memf_axiom = ("AESC_mem_memf_axiom", ``
-  (AESC_mem_memf (0x400520w:word64) = 0xFFw:word8) /\ (AESC_mem_memf (0x400521w:word64) = 0xC3w:word8) /\ 
-  (AESC_mem_memf (0x400522w:word64) = 0x01w:word8) /\ (AESC_mem_memf (0x400523w:word64) = 0xD1w:word8) /\ 
-  (AESC_mem_memf (0x400524w:word64) = 0xE0w:word8) /\ (AESC_mem_memf (0x400525w:word64) = 0x0Fw:word8) /\ 
-  (AESC_mem_memf (0x400526w:word64) = 0x00w:word8) /\ (AESC_mem_memf (0x400527w:word64) = 0xF9w:word8) /\ 
-  (AESC_mem_memf (0x400528w:word64) = 0xE1w:word8) /\ (AESC_mem_memf (0x400529w:word64) = 0x17w:word8)
-``);
-
-
-val Te_mem        = ``\x.((0x400E18w:word64)<=+x)/\(x<+(0x400E22w:word64))``;
-val Te_mem_memf_axiom = ("Te_mem_memf_axiom", ``
-  (Te_mem_memf (0x400E18w:word64) = 0xA5w:word8) /\ (Te_mem_memf (0x400E19w:word64) = 0x63w:word8) /\ 
-  (Te_mem_memf (0x400E1Aw:word64) = 0x63w:word8) /\ (Te_mem_memf (0x400E1Bw:word64) = 0xC6w:word8) /\ 
-  (Te_mem_memf (0x400E1Cw:word64) = 0x84w:word8) /\ (Te_mem_memf (0x400E1Dw:word64) = 0x7Cw:word8) /\ 
-  (Te_mem_memf (0x400E1Ew:word64) = 0x7Cw:word8) /\ (Te_mem_memf (0x400E1Fw:word64) = 0xF8w:word8) /\ 
-  (Te_mem_memf (0x400E20w:word64) = 0x99w:word8) /\ (Te_mem_memf (0x400E21w:word64) = 0x77w:word8)
-``);
-
-
-val Td_mem        = ``\x.((0x401E18w:word64)<=+x)/\(x<+(0x401E22w:word64))``;
-val Td_mem_memf_axiom = ("Td_mem_memf_axiom", ``
-  (Td_mem_memf (0x401E18w:word64) = 0x50w:word8) /\ (Td_mem_memf (0x401E19w:word64) = 0xA7w:word8) /\ 
-  (Td_mem_memf (0x401E1Aw:word64) = 0xF4w:word8) /\ (Td_mem_memf (0x401E1Bw:word64) = 0x51w:word8) /\ 
-  (Td_mem_memf (0x401E1Cw:word64) = 0x53w:word8) /\ (Td_mem_memf (0x401E1Dw:word64) = 0x65w:word8) /\ 
-  (Td_mem_memf (0x401E1Ew:word64) = 0x41w:word8) /\ (Td_mem_memf (0x401E1Fw:word64) = 0x7Ew:word8) /\ 
-  (Td_mem_memf (0x401E20w:word64) = 0xC3w:word8) /\ (Td_mem_memf (0x401E21w:word64) = 0xA4w:word8)
-``);
-
-
-val Td4_mem        = ``\x.((0x402E18w:word64)<=+x)/\(x<+(0x402E22w:word64))``;
-val Td4_mem_memf_axiom = ("Td4_mem_memf_axiom", ``
-  (Td4_mem_memf (0x402E18w:word64) = 0x52w:word8) /\ (Td4_mem_memf (0x402E19w:word64) = 0x09w:word8) /\ 
-  (Td4_mem_memf (0x402E1Aw:word64) = 0x6Aw:word8) /\ (Td4_mem_memf (0x402E1Bw:word64) = 0xD5w:word8) /\ 
-  (Td4_mem_memf (0x402E1Cw:word64) = 0x30w:word8) /\ (Td4_mem_memf (0x402E1Dw:word64) = 0x36w:word8) /\ 
-  (Td4_mem_memf (0x402E1Ew:word64) = 0xA5w:word8) /\ (Td4_mem_memf (0x402E1Fw:word64) = 0x38w:word8) /\ 
-  (Td4_mem_memf (0x402E20w:word64) = 0xBFw:word8) /\ (Td4_mem_memf (0x402E21w:word64) = 0x40w:word8)
-``);
+(* ====== EXPORTED AES CONDITION DEFINITIONS ARE INJECTED HERE ====== *)
 
 print "\r\n ======== LOADED everything ========\r\n";
 
-val _ = new_constant ("AESC_mem_memf", mk_vartype "word64 -> word8");
-val AESC_mem_memf_axiom_def = new_axiom AESC_mem_memf_axiom;
-val AESC_mem_val    = ``AESC_mem_memf:word64->word8``;
-val AESC_mem_in_mem = ``!addr. ^AESC_mem addr ==> (s.MEM addr = ^AESC_mem_val addr)``;
 
-val _ = new_constant ("Te_mem_memf", mk_vartype "word64 -> word8");
-val Te_mem_memf_axiom_def = new_axiom Te_mem_memf_axiom;
-val Te_mem_val    = ``Te_mem_memf:word64->word8``;
-val Te_mem_in_mem = ``!addr. ^Te_mem addr ==> (s.MEM addr = ^Te_mem_val addr)``;
-
-val _ = new_constant ("Td_mem_memf", mk_vartype "word64 -> word8");
-val Td_mem_memf_axiom_def = new_axiom Td_mem_memf_axiom;
-val Td_mem_val    = ``Td_mem_memf:word64->word8``;
-val Td_mem_in_mem = ``!addr. ^Td_mem addr ==> (s.MEM addr = ^Td_mem_val addr)``;
-
-val _ = new_constant ("Td4_mem_memf", mk_vartype "word64 -> word8");
-val Td4_mem_memf_axiom_def = new_axiom Td4_mem_memf_axiom;
-val Td4_mem_val    = ``Td4_mem_memf:word64->word8``;
-val Td4_mem_in_mem = ``!addr. ^Td4_mem addr ==> (s.MEM addr = ^Td4_mem_val addr)``;
-
-val aesc_in_mem    = ``^AESC_mem_in_mem``;
-val prog_counter   = ``s.PC = ^first_addr``;
-val stack_pointer  = ``s.SP_EL0 = 0x8000000FFw``;
-val sbox_in_mem    = ``^Te_mem_in_mem /\ ^Td_mem_in_mem /\ ^Td4_mem_in_mem``;
-
-val precond_arm_quot = `P s = ^aesc_in_mem /\ ^prog_counter /\ ^stack_pointer /\ ^sbox_in_mem`;
-val precond_arm = Define precond_arm_quot;
-
-
-val memf_axioms = [AESC_mem_memf_axiom_def, Te_mem_memf_axiom_def, Td_mem_memf_axiom_def, Td4_mem_memf_axiom_def];
+val memf_axioms = [AESC_mem_memf_axiom, Te_mem_memf_axiom, Td_mem_memf_axiom, Td4_mem_memf_axiom];
 
 
 
@@ -121,7 +54,7 @@ fun conv_fun t =
       (List.tabulate ( an - af, fn x =>
         let
           val a = wordsSyntax.mk_wordii (af + x, 64)
-	  val arm_eq = mk_eq (mk_comb(amemf, a), (snd o dest_eq o concl o (SIMP_CONV (srw_ss()) memf_axioms) o (mk_comb) (memf, a))
+	  val arm_eq = mk_eq (mk_comb(amemf, a), (snd o dest_eq o concl o (SIMP_CONV (srw_ss()) memf_axioms) o mk_comb) (memf, a))
         in
           arm_eq
         end
