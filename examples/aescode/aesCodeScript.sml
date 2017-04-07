@@ -2,7 +2,7 @@
 open HolKernel boolLib bossLib Parse;
 open lcsymtacs utilsLib;
 open wordsLib blastLib;
-open aes;
+open aes_code;
 open stateTheory;
 open state_transformerTheory updateTheory arm8Theory;
 open lcsymtacs stateTheory arm8_stepTheory; 
@@ -22,14 +22,12 @@ val _ = new_theory "aesCode";
 (* ---------------------- *)
 
 (*
-val instructions = [
+val instrs = [
 "d10103ff",
 "d10103ff"
 ];
-val first_addr   = ``0x400520w:word64``;
-val next_addr    = ``0x400D7Cw:word64``;
-
-val instructions = [List.hd instructions];
+val instrs_fstad   = ``0x400520w:word64``;
+val instrs = [List.hd instrs];
 *)
 
 
@@ -39,9 +37,9 @@ val fault_wt_mem = ``\x.x<+0x100000w:word64``;
 
 (* lifting the code and extracting the BIL blocks *)
 (* ---------------------- *)
-val inst_pcs = List.tabulate ((List.length instructions), fn i =>
-  (List.nth (instructions, i),
-   ((snd o dest_eq o concl o EVAL) ``^first_addr+(4w*^(wordsSyntax.mk_wordii (i, 64)))``))
+val inst_pcs = List.tabulate ((List.length instrs), fn i =>
+  (List.nth (instrs, i),
+   ((snd o dest_eq o concl o EVAL) ``^instrs_fstad+(4w*^(wordsSyntax.mk_wordii (i, 64)))``))
 );
 
 val thms = List.map (fn (code, pc) =>

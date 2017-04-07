@@ -2,6 +2,8 @@
 open HolKernel boolLib bossLib Parse;
 open lcsymtacs utilsLib;
 open wordsLib blastLib;
+open aes_code;
+open aes_mem;
 open state_transformerTheory updateTheory arm8Theory;
 open stateTheory;
 open lcsymtacs arm8_stepTheory;
@@ -16,15 +18,61 @@ open arm8bilInstructionLib;
 
 val _ = new_theory "aesProp1Cond";
 
-(* ====== EXPORTED AES CONDITION DEFINITIONS ARE INJECTED HERE ====== *)
+
+
+
+
+fun holWord64Plus hx iy =
+  wordsSyntax.mk_wordii ((wordsSyntax.uint_of_word hx) + iy, 64);
+
+fun nextBytesOf fstad bytesarr =
+  holWord64Plus fstad (length bytesarr);
+
+fun axiomFromMem fstad bytesarr mem_val =
+  list_mk_conj (List.tabulate (length bytesarr, fn x => mk_eq (mk_comb (mem_val, holWord64Plus fstad x), List.nth (bytesarr, x))))
+
+val AESC_mem        = ``\x.((^AESC_mem_fstad)<=+x)/\(x<+(^(nextBytesOf AESC_mem_fstad AESC_mem_bytes)))``;
+val _ = new_constant ("AESC_mem_memf", mk_vartype "word64 -> word8");
+val AESC_mem_val    = ``AESC_mem_memf:word64->word8``;
+val AESC_mem_memf_axiom_def = new_axiom ("AESC_mem_memf_axiom", axiomFromMem AESC_mem_fstad AESC_mem_bytes AESC_mem_val);
+val AESC_mem_in_mem = ``!addr. ^AESC_mem addr ==> (s.MEM addr = ^AESC_mem_val addr)``;
+
+val Te_mem        = ``\x.((^Te_mem_fstad)<=+x)/\(x<+(^(nextBytesOf Te_mem_fstad Te_mem_bytes)))``;
+val _ = new_constant ("Te_mem_memf", mk_vartype "word64 -> word8");
+val Te_mem_val    = ``Te_mem_memf:word64->word8``;
+val Te_mem_memf_axiom_def = new_axiom ("Te_mem_memf_axiom", axiomFromMem Te_mem_fstad Te_mem_bytes Te_mem_val);
+val Te_mem_in_mem = ``!addr. ^Te_mem addr ==> (s.MEM addr = ^Te_mem_val addr)``;
+
+val Td_mem        = ``\x.((^Td_mem_fstad)<=+x)/\(x<+(^(nextBytesOf Td_mem_fstad Td_mem_bytes)))``;
+val _ = new_constant ("Td_mem_memf", mk_vartype "word64 -> word8");
+val Td_mem_val    = ``Td_mem_memf:word64->word8``;
+val Td_mem_memf_axiom_def = new_axiom ("Td_mem_memf_axiom", axiomFromMem Td_mem_fstad Td_mem_bytes Td_mem_val);
+val Td_mem_in_mem = ``!addr. ^Td_mem addr ==> (s.MEM addr = ^Td_mem_val addr)``;
+
+val Td4_mem        = ``\x.((^Td4_mem_fstad)<=+x)/\(x<+(^(nextBytesOf Td4_mem_fstad Td4_mem_bytes)))``;
+val _ = new_constant ("Td4_mem_memf", mk_vartype "word64 -> word8");
+val Td4_mem_val    = ``Td4_mem_memf:word64->word8``;
+val Td4_mem_memf_axiom_def = new_axiom ("Td4_mem_memf_axiom", axiomFromMem Td4_mem_fstad Td4_mem_bytes Td4_mem_val);
+val Td4_mem_in_mem = ``!addr. ^Td4_mem addr ==> (s.MEM addr = ^Td4_mem_val addr)``;
+
+
+
+
+val aesc_in_mem    = ``^AESC_mem_in_mem``;
+val prog_counter   = ``s.PC = ^instrs_fstad``;
+val stack_pointer  = ``s.SP_EL0 = 0x8000000FFw``;
+val sbox_in_mem    = ``^Te_mem_in_mem /\ ^Td_mem_in_mem /\ ^Td4_mem_in_mem``;
+
+val precond_arm = Define `P s = ^aesc_in_mem /\ ^prog_counter /\ ^stack_pointer /\ ^sbox_in_mem`;
+
+val memf_axioms = [AESC_mem_memf_axiom_def, Te_mem_memf_axiom_def, Td_mem_memf_axiom_def, Td4_mem_memf_axiom_def];
+
+
+
+
+
 
 print "\r\n ======== LOADED everything ========\r\n";
-
-
-val memf_axioms = [AESC_mem_memf_axiom, Te_mem_memf_axiom, Td_mem_memf_axiom, Td4_mem_memf_axiom];
-
-
-
 
 (* expand predicate as preparation for expression lifting *)
 (*
@@ -265,7 +313,7 @@ val precon_sim_proof = (quantif_add o DISCH_ALL) (MATCH_MP Pb_ent thm_conj);
 
 
 
-val goal = ``!s env pco. ^overallgoal_ant ==> (Pb env /\ (pco = SOME <|label := Address (Reg64 ^first_addr); index := 0|>))``;
+val goal = ``!s env pco. ^overallgoal_ant ==> (Pb env /\ (pco = SOME <|label := Address (Reg64 ^instrs_fstad); index := 0|>))``;
 val goal_thm = prove(``^goal``,
   (REPEAT STRIP_TAC)
   THENL [
