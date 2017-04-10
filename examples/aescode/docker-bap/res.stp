@@ -1,0 +1,15 @@
+% free variables:
+y_80 : BITVECTOR(32);
+% end free variables.
+
+
+QUERY(
+0bin1 =
+(~((IF (BVLT(0hex00000032,y_80)) THEN 0bin1 ELSE 0bin0 ENDIF&
+   IF (BVLT(y_80,0hex0000ffff)) THEN 0bin1 ELSE 0bin0 ENDIF))|
+(LET x_85_0 = BVPLUS(32, y_80,0hex0000000a) IN
+((IF (BVLT(0hex00000005,x_85_0)) THEN 0bin1 ELSE 0bin0 ENDIF&
+ IF (BVLE(0hex0000000a,y_80)) THEN 0bin1 ELSE 0bin0 ENDIF)&
+0bin1)))
+);
+COUNTEREXAMPLE;
