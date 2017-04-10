@@ -15,7 +15,7 @@ open arm8stepbilLib;
 open arm8bilInstructionLib;
 
 
-use "./to_fix/aes_p.sml";
+use "./aescode/to_fix/aes_p.sml";
 
 (*HOL_Interactive.toggle_quietdec();*)
 
@@ -36,7 +36,7 @@ val first_addr   = ``0x400520w:word64``;
 val AESC_mem        = ``\x.((0x400520w:word64)<=+x)/\(x<+(0x400522w:word64))``;
 val _ = new_constant("AESC_mem_memf", mk_vartype "word64 -> word8");
 val AESC_mem_memf_axiom = new_axiom("AESC_mem_memf_axiom", ``
-  (AESC_mem_memf (0x400520w:word64) = 0xFFw:word8) /\ (AESC_mem_memf (0x400521w:word64) = 0xC3w:word8) /\ T``);
+  (AESC_mem_memf (0x400520w:word64) = 0xFFw:word8) /\ (AESC_mem_memf (0x400521w:word64) = 0xC3w:word8)``);
 val AESC_mem_val    = ``AESC_mem_memf:word64->word8``;
 val AESC_mem_in_mem = ``!addr. ^AESC_mem addr ==> (s.MEM addr = ^AESC_mem_val addr)``;
 
@@ -168,13 +168,22 @@ val implics = List.map (dest_imp o snd o dest_forall o snd o dest_forall o snd o
 
 
 
-val tac_expand =
+fun tac_expand addr =
   PAT_ASSUM ``!x.p ==> q`` (fn thm =>
     let   
       val (vars,_) = match_term ``!a. (\x.(af<=+x)/\(x<+an)) a ==> (s.MEM a = memf a)``(*``!a. ((af<=+a) /\ (a<+an)) ==> (s.MEM a = memf a)``*) (concl thm)
       val af = wordsSyntax.uint_of_word (subst vars ``af:word64``)
       val an = wordsSyntax.uint_of_word (subst vars ``an:word64``)
     in
+      if af <= addr andalso addr < an then
+        let
+          val a = wordsSyntax.mk_wordii (addr, 64)
+        in
+          ASSUME_TAC (SPEC a thm)
+        end
+      else
+        ALL_TAC
+(*
       EVERY (List.tabulate ( an - af, fn x =>
         let
           val a = wordsSyntax.mk_wordii (af + x, 64)
@@ -182,6 +191,7 @@ val tac_expand =
           ASSUME_TAC (SPEC a thm)
         end
         ) )
+*)
     end
   )
 ;
@@ -198,25 +208,37 @@ val lasttimer = start_time();
 
 
 
-val list_thms = CONJUNCTS (hd memf_axioms);
-
+val list_ax_thms = List.foldr (fn (x,y) => List.concat [CONJUNCTS x, y]) [] memf_axioms;
+val memf_aesc_len = (List.length o CONJUNCTS o hd) memf_axioms;
 
 (*
 val anttm = fst (List.nth(implics, 0));
+val idx = 0;
 *)
-val pandSentailed = List.map (fn (anttm,_) =>
+val pandSentailed = List.tabulate (List.length implics, fn idx =>
   let
-    val subgoal = ``!s env pco. ^overallgoal_ant ==> ^anttm``
+    val anttm = (fst o List.nth) (implics, idx);
+    val memf_thm = if (idx < memf_aesc_len) then
+                     [List.nth (list_ax_thms, idx)]
+                   else if (idx >= memf_aesc_len + 2) then
+		     [List.nth (list_ax_thms, idx - 2)]
+		   else
+		     [];
+    val tac_expand_inst = if (memf_aesc_len <= idx andalso idx < memf_aesc_len + 2) then
+                            ALL_TAC
+			  else
+			    tac_expand ((wordsSyntax.uint_of_word o snd o dest_comb o fst o dest_eq o concl o hd) memf_thm);
+    val subgoal = ``!s env pco. ^overallgoal_ant ==> ^anttm``;
   in
     prove(``^subgoal``,
       (REPEAT STRIP_TAC)
       THEN (FULL_SIMP_TAC (simpLib.empty_ss) [precond_arm])
-      THEN (tac_expand)
-      THEN (FULL_SIMP_TAC (srw_ss()) memf_axioms)
+      THEN (tac_expand_inst)
+      THEN (FULL_SIMP_TAC (srw_ss()) memf_thm)
       THEN (FULL_SIMP_TAC (srw_ss()) [])
     )
   end
-  ) implics;
+  );
 
 
 
@@ -228,26 +250,262 @@ end_time lasttimer;
 val lasttimer = start_time();
 
 
+(*
+val allconjs = (List.map ((hd o snd o strip_comb o fst o dest_eq) o snd) implics);
+
+
+val termList = List.map (snd) implics;
+val termImpl = List.foldl mk_imp (concl faerdigt) termList;
+
+val termList = List.concat [List.map (snd) implics, [concl faerdigt]];
+val termImpl = List.foldl (fn (thd,trest) =>
+    mk_imp (thd, trest)
+  )
+  (last termList)
+  ((tl o List.rev) termList)
+;
+
+(UNDISCH_ALL o ASSUME) termImpl
+*)
+ 
+(*
+val testt = prove(``(x = (5w:word64)) ==> (y = (3w:word64)) ==> (x + y = 8w)``, STRIP_TAC THEN (RW_TAC bool_ss []) THEN EVAL_TAC);
+val assumAB = ASSUME ``(x = (5w:word64)) /\ (y = (3w:word64))``;
+val afterAssum = CONJUNCT1 (CONJ testt assumAB);
+
+DISCH_ALL (MP (MP afterAssum ((CONJUNCT1 o CONJUNCT2) (CONJ testt assumAB))) ((CONJUNCT2 o CONJUNCT2) (CONJ testt assumAB)))
+*)
 
 
 
-val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
-val Pb_ent = prove(``^Pb_ent_goal``,
+val bil_eval_and2_thm = prove(``!x y xv yv env. (bil_eval_exp x env = Int (bool2b xv)) ==> (bil_eval_exp y env = Int (bool2b yv)) ==> (bil_eval_exp (And x y) env = Int (bool2b (xv /\ yv)))``,
   (RW_TAC (srw_ss()) [])
-  THEN (FULL_SIMP_TAC (srw_ss()) [Pb_def])
+  THEN (Cases_on `xv`)
+  THEN (Cases_on `yv`)
+(*  THEN (RW_TAC (srw_ss()) []) *)
+  
   THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def])
   THEN (FULL_SIMP_TAC (srw_ss()) [])
-  THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def])
-  THEN (FULL_SIMP_TAC (srw_ss()) [])
+  THEN (EVAL_TAC)
+);
+
+val bil_eval_and_spec_thm = ((GENL [``x:bil_exp_t``, ``y:bil_exp_t``]) o (SIMP_RULE bool_ss []) o (SPECL [``x:bil_exp_t``, ``y:bil_exp_t``, ``T``, ``T``, ``env:environment``])) bil_eval_and2_thm;
+
+
+val allconjs = (List.map ((hd o snd o strip_comb o fst o dest_eq) o snd) implics);
+
+(*
+val thm1 = ((ASSUME o snd o last) implics);
+val bi = ((hd o snd o strip_comb o fst o dest_eq) o snd o hd o tl o List.rev) implics;
+
+val thm1 = MP (DISCH (concl thm1) thm2) thm1;
+val bi = ((hd o snd o strip_comb o fst o dest_eq) o snd o hd o tl o tl o List.rev) implics;
+*)
+val thmWeActuallyWant = List.foldr (fn (bi,thm1) =>
+    let
+      val bexp_y = ((hd o snd o strip_comb o fst o dest_eq) o concl) thm1;
+      val thm2 = (UNDISCH o UNDISCH o (SPECL [bi, bexp_y])) bil_eval_and_spec_thm;
+    in
+      MP (DISCH (concl thm1) thm2) thm1
+    end
+  )
+  ((ASSUME o snd o last) implics)
+  ((List.rev o tl o List.rev) allconjs);
+
+val thmImpChain = List.foldr (fn (x,y) => DISCH x y) thmWeActuallyWant (List.map (snd) implics); (* DISCH_ALL *)
+
+(*
+val termList = List.concat [List.map (snd) implics, [concl thmWeActuallyWant]];
+val termImpl = List.foldl (fn (thd,trest) =>
+    mk_imp (thd, trest)
+  )
+  (last termList)
+  ((tl o List.rev) termList)
+;
+*)
+
+val assumAB = (ASSUME o list_mk_conj) (List.map (snd) implics);
+val conjAssum = CONJ thmImpChain assumAB;
+val afterAssum = CONJUNCT1 conjAssum;
+fun conjunctAt x last =
+  let
+    val conj2chain = if x = 0 then (fn x => x) else (List.foldr (fn (x,y) => y o x) (CONJUNCT2) (List.tabulate (x-1, fn _ => CONJUNCT2)));
+  in
+    if x = last then
+      conj2chain
+    else
+      CONJUNCT1 o conj2chain
+  end
+;
+val thmAlmost = List.foldl (fn (cNext,x) =>
+    MP x cNext
+  )
+  afterAssum
+  (List.tabulate (length implics, fn x => conjunctAt x ((length implics) - 1) assumAB))
+;
+
+(*
+List.map concl (List.tabulate (length implics, fn x => conjunctAt x ((length implics) - 1) assumAB))
+*)
+
+val Pb_ent = ((GEN ``env:environment``) o (REWRITE_RULE [(SYM o (SPEC ``env:environment``)) Pb_def]) o DISCH_ALL) thmAlmost;
+(*
+val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
+val Pb_ent_check = prove(``^Pb_ent_goal``, ACCEPT_TAC Pb_ent);
+*)
+
+(*
+val testt = prove(``(x = (5w:word64)) ==> (y = (3w:word64)) ==> (x + y = 8w)``, STRIP_TAC THEN (RW_TAC bool_ss []) THEN EVAL_TAC);
+val assumAB = ASSUME ``(x = (5w:word64)) /\ (y = (3w:word64))``;
+val conjAssum = CONJ testt assumAB;
+val afterAssum = CONJUNCT1 conjAssum;
+
+DISCH_ALL (MP (MP afterAssum ((CONJUNCT1 o CONJUNCT2) conjAssum)) ((CONJUNCT2 o CONJUNCT2) conjAssum))
+*)
+
+
+
+(*
+val arg1 = (hd allconjs);
+val arg2 = (hd (tl allconjs));
+
+val thm1 = SIMP_RULE bool_ss [] (UNDISCH (SPECL [arg1, arg2, ``T``, ``T``, ``env:environment``] bil_eval_and2_thm));
+
+val storkonj = list_mk_conj (List.map snd implics);
+*)
+
+
+(*
+val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
+*)
+
+
+(*
+(* --------------------------------------------------------------- *)
+
+
+val bil_eval_and2_thm = prove(``!x y xv yv env. (bil_eval_exp x env = Int (bool2b xv)) ==> (bil_eval_exp y env = Int (bool2b yv)) ==> (bil_eval_exp (And x y) env = Int (bool2b (xv /\ yv)))``,
+  (RW_TAC (srw_ss()) [])
+  THEN (Cases_on `xv`)
+  THEN (Cases_on `yv`)
+(*  THEN (RW_TAC (srw_ss()) []) *)
+  
   THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def])
   THEN (FULL_SIMP_TAC (srw_ss()) [])
   THEN (EVAL_TAC)
 );
 
 
+(*exception SomeRandomException;*)
+val bil_and_tac = ((fn (ass, go) =>
+    let
+      val exp = (fst o dest_eq) go
+      val (f, [arg, env]) = strip_comb exp
+      val (f, [arg1, arg2]) = strip_comb arg
+    in
+      if f <> ``And`` then
+      	(*raise SomeRandomException*)
+        (*ALL_TAC (ass, go)*) FAIL_TAC "unknown exception" (ass, go)
+      else
+        let
+          val thm1 = SIMP_RULE bool_ss [] (UNDISCH (SPECL [arg1, arg2, ``T``, ``T``, env] bil_eval_and2_thm))
+          val hyp = (fst o dest_imp o concl) thm1
+        in
+	  (
+            (SUBGOAL_THEN hyp (fn thm => (ACCEPT_TAC (MP thm1 thm)) ))
+            (*(ASSUME_TAC thm) THEN (ASSUME_TAC thm1) THEN (REV_FULL_SIMP_TAC bool_ss [])))*)
+            THEN ALL_TAC
+          )(ass, go)
+        end
+    end
+  ))
+;
+
+
+val Pb_ent_goal = ``!env. ^(list_mk_conj (List.map snd implics)) ==> Pb env``;
+val Pb_ent = prove(``^Pb_ent_goal``,
+  (RW_TAC (srw_ss()) [])
+  THEN (SIMP_TAC (bool_ss) [Pb_def])
+
+(*  THEN (REPEAT (CHANGED_TAC bil_and_tac)) *)
+  THEN (REPEAT bil_and_tac)
+  
+  THEN (FULL_SIMP_TAC (bool_ss) [])
+  
+
+
+(*
+  THEN (fn (ass, go) =>
+    let val exp = (fst o dest_eq) go
+	val (f, [arg, env]) = strip_comb exp
+	val (f, [arg1, arg2]) = strip_comb arg
+	val thm1 = (UNDISCH (SPECL [arg1, arg2, ``T``, ``T``, env] bil_eval_and2_thm))
+	val hyp = (fst o dest_imp o concl) thm1
+    in  (
+        (SUBGOAL_THEN hyp (fn thm => (ASSUME_TAC thm) THEN (ASSUME_TAC thm1) THEN (REV_FULL_SIMP_TAC bool_ss [])))
+    	THEN ALL_TAC
+	)(ass, go)
+    end
+  )
+*)
 
 
 
+(*
+  THEN (REWRITE_TAC [bil_eval_and2_thm])
+
+val go = ``bil_eval_exp
+  (And
+     (Equal
+        (Load (Den "arm8_state_MEM") (Const (Reg64 0x400520w))
+           (Const (Reg1 1w)) Bit8) (Const (Reg8 255w)))
+     (And
+        (Equal
+           (Load (Den "arm8_state_MEM") (Const (Reg64 0x400521w))
+              (Const (Reg1 1w)) Bit8) (Const (Reg8 195w)))
+        (And (Equal (Den "arm8_state_PC") (Const (Reg64 0x400520w)))
+           (Equal (Den "arm8_state_SP_EL0")
+              (Const (Reg64 0x8000000FFw)))))) env =
+Int (bool2b T)``;
+
+val go = ``bil_eval_exp
+  (Equal (Den "arm8_state_SP_EL0") (Const (Reg64 0x8000000FFw))) env =
+Int (bool2b T)``;
+
+*)
+
+
+(*
+  THEN (List.foldr (fn (x,y) => x THEN y) ALL_TAC
+                       (List.tabulate (List.length implics - 1, fn _ =>
+                         (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def]) THEN (FULL_SIMP_TAC (srw_ss()) []))))
+  (*
+  THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def]) THEN (FULL_SIMP_TAC (srw_ss()) [])
+  THEN (SIMP_TAC (srw_ss()) [Once bil_eval_exp_def]) THEN (FULL_SIMP_TAC (srw_ss()) [])
+  *)
+  THEN (EVAL_TAC)
+*)
+);
+
+
+
+(*
+REWRITE_TAC (* possibly instanciate theorem with actual values *)
+
+CONJ_TAC
+
+ACCEPT_TAC
+
+(fn (ass,g) =>
+ (ALL_TAC)(ass,g)
+)
+FIRST_ASSUM
+POP_ASSUM_LIST
+
+*)
+
+(* --------------------------------------------------------------- *)
+*)
 
 print "\r\n ======== AFTER /\\pb |- Pb ========\r\n";
 end_time lasttimer;
