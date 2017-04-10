@@ -420,7 +420,7 @@ f.write("\nend\n")
 
 def append_sym_predicate(symbol, predprefix):
   (start, length, data) = extract_symboldata(content, symbol)
-  #length = 2 #(* this line is just for creating smaller tests for later code *)
+  #length = 20 #(* this line is just for creating smaller tests for later code *)
   datmap = toByteMap(start, length, data)
 
   # alternative 1

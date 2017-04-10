@@ -74,6 +74,37 @@ val memf_axioms = [AESC_mem_memf_axiom_def, Te_mem_memf_axiom_def, Td_mem_memf_a
 
 print "\r\n ======== LOADED everything ========\r\n";
 
+val instrs_lstad = holWord64Plus (nextBytesOf AESC_mem_fstad AESC_mem_bytes) ~4;
+
+(* postcondition in ARM *)
+val prog_counter   = ``s.PC = ^instrs_lstad``;
+val postcond_arm = Define `Q s = ^prog_counter`;
+
+
+(* lifting and bil equivalent *)
+val conv_val = (snd o dest_eq o concl o (SPEC ``s:arm8_state``)) postcond_arm;
+val conv_bil = let val (x,_,_) = tc_exp_arm8_prefix conv_val "" in x end;
+val Qb_def = Define `Qb env = (bil_eval_exp ^conv_bil env = Int (bool2b T))`;
+
+(*/////// check invariant definition wrt program counter, bil PC and arm PC register preserving?!?!?!
+*)
+
+(* proving postcondition transfer under simulation *)
+val goal = ``!s env. (Qb env /\ sim_invariant s env (SOME <|label := Address (Reg64 ^instrs_lstad); index := 0|>)) ==> Q s``;
+val postcon_sim_proof = prove(``^goal``,
+       (REPEAT STRIP_TAC)
+  THEN (FULL_SIMP_TAC (simpLib.empty_ss) [Qb_def, postcond_arm, sim_invariant_def])
+  THEN (Cases_on `^prog_counter`)
+
+  THEN (FULL_SIMP_TAC (srw_ss()) [])
+);
+
+val postcond_thm = save_thm("postcond_thm", postcon_sim_proof);
+
+
+
+print "\r\n ======== Postcondition done ========\r\n";
+
 (* expand predicate as preparation for expression lifting *)
 (*
 val t = (fst o dest_conj o snd o dest_eq o concl o (SPEC ``s:arm8_state``)) precond_arm;
@@ -313,6 +344,11 @@ val precon_sim_proof = (quantif_add o DISCH_ALL) (MATCH_MP Pb_ent thm_conj);
 
 
 
+
+
+
+print "\r\n ======== AFTER |- P /\\ sim ==> Pb  ========\r\n";
+
 val goal = ``!s env pco. ^overallgoal_ant ==> (Pb env /\ (pco = SOME <|label := Address (Reg64 ^instrs_fstad); index := 0|>))``;
 val goal_thm = prove(``^goal``,
   (REPEAT STRIP_TAC)
@@ -325,7 +361,13 @@ val goal_thm = prove(``^goal``,
   THEN (EVAL_TAC)
   );
 
+val precond_thm = save_thm("precond_thm", goal_thm);
 
 
+
+
+
+
+print "\r\n ======== AFTER |- P /\\ sim ==> Pb /\\ pco ========\r\n";
 
 val _ = export_theory();
