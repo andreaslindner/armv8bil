@@ -19,7 +19,7 @@ open arm8bilInstructionLib;
 val _ = new_theory "aesProp1Cond";
 
 
-
+val _ = set_trace "TheoryPP.include_docs" 0;
 
 
 fun holWord64Plus hx iy =
