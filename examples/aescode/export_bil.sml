@@ -1,7 +1,15 @@
+HOL_Interactive.toggle_quietdec();
+
 open HolKernel boolLib bossLib Parse;
 open wordsLib;
+open TypeBase;
 
 load "aesCodeTheory";
+load "aesProp1CondTheory";
+
+
+
+
 
 (* export to BAP format: first helper functions *)
 (* ---------------------- *)
@@ -25,6 +33,8 @@ fun print_type var_type =
     else if var_type = ``Reg32`` then "u32"
     else if var_type = ``Bit16`` then "u16"
     else if var_type = ``Reg16`` then "u16"
+    else if var_type = ``Bit8`` then "u8"
+    else if var_type = ``Reg8`` then "u8"
     else if var_type = ``Bit1`` then "bool"
     else if var_type = ``Reg1`` then "bool"
     else if var_type = ``MemByte`` then "?u64"
@@ -60,6 +70,10 @@ in
        let val exp1 = print_exp (List.nth(args, 0))
            val exp2 = print_exp (List.nth(args, 1))
        in "("^exp1 ^ ")+(" ^ exp2 ^ ")" end
+    else if ope = ``Minus`` then
+       let val exp1 = print_exp (List.nth(args, 0))
+           val exp2 = print_exp (List.nth(args, 1))
+       in "("^exp1 ^ ")-(" ^ exp2 ^ ")" end
     else if ope = ``Mult`` then
        let val exp1 = print_exp (List.nth(args, 0))
            val exp2 = print_exp (List.nth(args, 1))
@@ -72,6 +86,10 @@ in
        let val exp1 = print_exp (List.nth(args, 0))
            val exp2 = print_exp (List.nth(args, 1))
        in "("^exp1 ^ ")&(" ^ exp2 ^ ")" end
+    else if ope = ``Xor`` then (*FIXME*)
+       let val exp1 = print_exp (List.nth(args, 0))
+           val exp2 = print_exp (List.nth(args, 1))
+       in "("^exp1 ^ ")^(" ^ exp2 ^ ")" end
     else if ope = ``Or`` then
        let val exp1 = print_exp (List.nth(args, 0))
            val exp2 = print_exp (List.nth(args, 1))
@@ -121,6 +139,7 @@ in
        in if ty = ``Bit64`` then "(("^exp1 ^ ")[" ^ exp2 ^ ", e_little]:u64)"
           else if ty = ``Bit32`` then "(("^exp1 ^ ")[" ^ exp2 ^ ", e_little]:u32)"
           else if ty = ``Bit16`` then "(("^exp1 ^ ")[" ^ exp2 ^ ", e_little]:u16)"
+          else if ty = ``Bit8`` then "(("^exp1 ^ ")[" ^ exp2 ^ ", e_little]:u8)"
           else "ERROR"
        end
     else if ope = ``Store`` then
@@ -131,6 +150,7 @@ in
        in if ty = ``Bit64`` then "("^exp1 ^ ") with [" ^ exp2 ^ ", e_little]:u64 = " ^ exp3
           else if ty = ``Bit32`` then "("^exp1 ^ ") with [" ^ exp2 ^ ", e_little]:u32 = " ^ exp3
           else if ty = ``Bit16`` then "("^exp1 ^ ") with [" ^ exp2 ^ ", e_little]:u16 = " ^ exp3
+          else if ty = ``Bit8`` then "("^exp1 ^ ") with [" ^ exp2 ^ ", e_little]:u8 = " ^ exp3
           else "ERROR"
        end
     else if ope = ``IfThenElse`` then
@@ -168,6 +188,10 @@ in
      let val exp = (List.nth(args,0))
          val exp_str = print_exp exp
      in "assert " ^exp_str ^ "\n" end
+  else if inst = ``Assume`` then
+     let val exp = (List.nth(args,0))
+         val exp_str = print_exp exp
+     in "assume " ^exp_str ^ "\n" end
   else "ERROR\n"
 end;
 
@@ -188,7 +212,33 @@ in frag_str end;
 (* export to BAP format: then using the helper functions *)
 (* ---------------------- *)
 val bilprog = (fst o listSyntax.dest_list o snd o dest_eq o concl) aesCodeTheory.aes_bil_program_def;
-val bapinput_content = List.foldr (fn (x, y) => (print_block x) ^ y) "" (List.concat [[], bilprog, []]);
+
+val bilprog_fstadr = (snd o dest_comb o snd o dest_comb o snd o hd o snd o dest_record o hd) bilprog;
+val bilprog_lstadr = (snd o dest_comb o snd o dest_comb o snd o hd o snd o dest_record o last) bilprog;
+
+fun holWord64Plus hx iy =
+  wordsSyntax.mk_wordii ((wordsSyntax.uint_of_word hx) + iy, 64);
+
+val precond  = (hd o snd o strip_comb o fst o dest_eq o snd o dest_eq o concl o (SPEC ``env:environment``)) aesProp1CondTheory.Pb_def;
+val postcond = (hd o snd o strip_comb o fst o dest_eq o snd o dest_eq o concl o (SPEC ``env:environment``)) aesProp1CondTheory.Qb_def;
+
+val bilprog_assume = ``<|label := Address (Reg64 ^(holWord64Plus bilprog_fstadr (0-4))); statements := [Assert ^(precond)]|>``;
+val bilprog_assert = ``<|label := Address (Reg64 ^(holWord64Plus bilprog_lstadr (0+4))); statements := [Assert ^(postcond)]|>``;
+
+val bapinput_content = List.foldr (fn (x, y) => (print_block x) ^ y) "" (List.concat [[bilprog_assume], bilprog, [bilprog_assert]]);
+
+
+HOL_Interactive.toggle_quietdec();
+
+(*
+List.nth (bilprog,(0x57C-0x520) div 4);
+val precond  = (snd o dest_comb o fst o dest_comb o hd o snd o strip_comb o fst o dest_eq o snd o dest_eq o concl o (SPEC ``env:environment``)) aesProp1CondTheory.Pb_def;
+val bilprog_assume = ``<|label := Address (Reg64 ^(holWord64Plus bilprog_fstadr (0-4))); statements := [Assert ^(precond)]|>``;
+HOL_Interactive.toggle_quietdec();
+val bapinput_content = List.foldr (fn (x, y) => (print_block x) ^ y) "" (List.concat [[bilprog_assume], bilprog, [bilprog_assert]]);
+HOL_Interactive.toggle_quietdec();
+*)
+
 
 val fd = TextIO.openOut "aes.bil";
 val _ = TextIO.output (fd, bapinput_content) handle e => (TextIO.closeOut fd; raise e);
